@@ -224,7 +224,7 @@ class XdkNodeUtils extends EventEmitter {
   scan(xdkId, timeout, autoconnect) {
     return new Promise((resolve, reject) => {
       if (SCANNING) reject("Scanning already ongoing");
-      if (!xdkId) reject("Missing XDK ID to lookg for");
+      if (!xdkId) reject("Missing XDK ID to look for");
       if (!noble) reject("NOBLE not available!");
       if (BLESTATUS !== POWEREDON) reject ("Cannot scan yet as BLE is not ON");
       if (SCANTIMER) {
@@ -290,6 +290,8 @@ noble.on('discover', function(peripheral) {
     if (AUTOCONNECT) {
       connect();
     }
+  } else {
+    log.verbose(BLE, "Ignoring device id '%s'", peripheral.id);
   }
 });
 
