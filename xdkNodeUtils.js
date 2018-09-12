@@ -284,8 +284,8 @@ noble.on('discover', function(peripheral) {
 
   if (peripheral.id == XDKID) {
     log.verbose(BLE, "XDK found!!");
-    noble.stopScanning();
     console.log(util.inspect(peripheral, true, null));
+    noble.stopScanning();
     XDK = peripheral;
     XDK.once('connect', peripheralConnected);
     XDK.once('disconnect', peripheralDisconnected);
