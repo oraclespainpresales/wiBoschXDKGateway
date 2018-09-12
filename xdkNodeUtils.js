@@ -146,7 +146,9 @@ var READERS = [ { characteristic: READER1, parser: dummyReader },
                 { characteristic: READER12, parser: dummyReader },
                 { characteristic: READER13, parser: dummyReader },
                 { characteristic: READER14, parser: dummyReader },
-                { characteristic: READER15, parser: dummyReader }
+                { characteristic: READER15, parser: dummyReader },
+                { characteristic: READER16, parser: dummyReader },
+                { characteristic: READER17, parser: dummyReader }
   ]
   , WRITERS = []
 ;
