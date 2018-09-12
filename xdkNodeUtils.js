@@ -125,6 +125,7 @@ class XdkNodeUtils extends EventEmitter {
       if (!XDK || !XDK.connect) reject("Cannot connect. XDK not discovered");
       XDK.connect((err) => {
         log.verbose(BLE,"XDK connected!");
+        console.log(util.inspect(XDK, true, null));
         if (err) {
           log.error(BLE, "Error trying to connect to XDK");
           reject(err);
