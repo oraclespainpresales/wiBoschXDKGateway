@@ -33,7 +33,7 @@ const SAMPLINGRATE = 500
     , READER13    = '92dab061763411e482f80800200c9a66'
     , READER14    = '92dab062763411e482f80800200c9a66'
     , READER15    = '92dab063763411e482f80800200c9a66'
-    
+
     , READER16    = 'c29672117ba411e482f80800200c9a66'
     , READER17    = 'c29672127ba411e482f80800200c9a66'
     , POWEREDON  = 'poweredOn'
@@ -123,7 +123,31 @@ var sensorsParser = (data) => {
   self.emit('data', payload);
 };
 
-var READERS = [ { characteristic: READER1, parser: accelParser }, { characteristic: READER2, parser: sensorsParser } ]
+var dummyReader = (data) => {
+  console.log("Data!");
+}
+
+/**
+var READERS = [ { characteristic: READER1, parser: accelParser },
+                { characteristic: READER2, parser: sensorsParser }
+  ]
+**/
+var READERS = [ { characteristic: READER1, parser: dummyReader },
+                { characteristic: READER2, parser: dummyReader },
+                { characteristic: READER3, parser: dummyReader },
+                { characteristic: READER4, parser: dummyReader },
+                { characteristic: READER5, parser: dummyReader },
+                { characteristic: READER6, parser: dummyReader },
+                { characteristic: READER7, parser: dummyReader },
+                { characteristic: READER8, parser: dummyReader },
+                { characteristic: READER9, parser: dummyReader },
+                { characteristic: READER10, parser: dummyReader },
+                { characteristic: READER11, parser: dummyReader },
+                { characteristic: READER12, parser: dummyReader },
+                { characteristic: READER13, parser: dummyReader },
+                { characteristic: READER14, parser: dummyReader },
+                { characteristic: READER15, parser: dummyReader }
+  ]
   , WRITERS = []
 ;
 
