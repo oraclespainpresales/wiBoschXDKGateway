@@ -18,7 +18,8 @@ var XdkNodeUtils = _.noop()
 
 log.timestamp = true;
 
-const XDKID = "09c2b4046299459b8475b237d200eac4"
+//const XDKID = "09c2b4046299459b8475b237d200eac4"
+const XDKID = "fcd6bd100551"
 ;
 
 const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
