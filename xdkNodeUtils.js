@@ -18,32 +18,8 @@ const SAMPLINGRATE = 500
     , XDK_CHARACTERISTIC_CONTROL_NODE_REBOOT               = '55b741d37ada11e482f80800200c9a66'
     , XDK_CHARACTERISTIC_CONTROL_NODE_GET_FW_VERSION       = '55b741d47ada11e482f80800200c9a66'
     , XDK_CHARACTERISTIC_CONTROL_NODE_USE_SENSOR_FUSION    = '55b741d57ada11e482f80800200c9a66'
-/**
-    , READER1    = '5a211d41716611e482f80800200c9a66'
-    , READER2    = '5a211d42716611e482f80800200c9a66'
-    , READER3    = '5a211d43716611e482f80800200c9a66'
-    , READER4    = 'aca96a4174a411e482f80800200c9a66'
-    , READER5    = 'aca96a4274a411e482f80800200c9a66'
-    , READER6    = 'aca96a4374a411e482f80800200c9a66'
-    , READER7    = '38eb02c1754011e482f80800200c9a66'
-    , READER8    = '01033831754c11e482f80800200c9a66'
-    , READER9    = '651f4c01757911e482f80800200c9a66'
-    , READER10    = '651f4c02757911e482f80800200c9a66'
-    , READER11    = '651f4c03757911e482f80800200c9a66'
-    , READER12    = '651f4c04757911e482f80800200c9a66'
-    , READER13    = '92dab061763411e482f80800200c9a66'
-    , READER14    = '92dab062763411e482f80800200c9a66'
-    , READER15    = '92dab063763411e482f80800200c9a66'
-**/
     , READER1    = 'c29672117ba411e482f80800200c9a66'
     , READER2    = 'c29672127ba411e482f80800200c9a66'
-/**
-    , READER18    = '2a00'
-    , READER19    = '2a01'
-    , READER20    = '2a24'
-    , READER21    = '2a28'
-    , READER22    = '2a29'
-**/
     , POWEREDON  = 'poweredOn'
     , POWEREDOFF = 'poweredOff'
 ;
@@ -131,10 +107,6 @@ var sensorsParser = (data) => {
   self.emit('data', payload);
 };
 
-var dummyReader = (data) => {
-  console.log(data);
-}
-
 var READERS = [ { characteristic: READER1, parser: accelParser },
                 { characteristic: READER2, parser: sensorsParser }
   ]
@@ -154,15 +126,12 @@ class XdkNodeUtils extends EventEmitter {
       log.verbose(BLE,"XDK connecting...");
       if (!XDK || !XDK.connect) reject("Cannot connect. XDK not discovered");
       XDK.connect((err) => {
-        log.verbose(BLE,"XDK connected!");
         if (err) {
           log.error(BLE, "Error trying to connect to XDK");
           reject(err);
           return;
         }
-        log.verbose(BLE,"Discovering services...");
         XDK.discoverServices([], (error, services) => { // Grab characteristics
-          log.verbose(BLE,"Services discovered");
           if (error) {
             log.error(BLE, "Error discovering services:");
             log.error(BLE, error);
