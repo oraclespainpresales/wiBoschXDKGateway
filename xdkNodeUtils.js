@@ -185,7 +185,9 @@ class XdkNodeUtils extends EventEmitter {
                   if ( READER ) {
                     log.verbose(BLE, "Subscribing to characteristic '%s'", READER.characteristic);
                     READER.c = characteristic;
+                    console.log("Notify");
                     characteristic.notify(true, function(err) {
+                      console.log("Notify callback: " + err);
                       if (err) {
                         nextCharacteristic(err);
                         return;
