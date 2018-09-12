@@ -18,8 +18,24 @@ const SAMPLINGRATE = 500
     , XDK_CHARACTERISTIC_CONTROL_NODE_REBOOT               = '55b741d37ada11e482f80800200c9a66'
     , XDK_CHARACTERISTIC_CONTROL_NODE_GET_FW_VERSION       = '55b741d47ada11e482f80800200c9a66'
     , XDK_CHARACTERISTIC_CONTROL_NODE_USE_SENSOR_FUSION    = '55b741d57ada11e482f80800200c9a66'
-    , READER1    = 'c29672117ba411e482f80800200c9a66'
-    , READER2    = 'c29672127ba411e482f80800200c9a66'
+    , READER1    = '5a211d41716611e482f80800200c9a66'
+    , READER2    = '5a211d42716611e482f80800200c9a66'
+    , READER3    = '5a211d43716611e482f80800200c9a66'
+    , READER4    = 'aca96a4174a411e482f80800200c9a66'
+    , READER5    = 'aca96a4274a411e482f80800200c9a66'
+    , READER6    = 'aca96a4374a411e482f80800200c9a66'
+    , READER7    = '38eb02c1754011e482f80800200c9a66'
+    , READER8    = '01033831754c11e482f80800200c9a66'
+    , READER9    = '651f4c01757911e482f80800200c9a66'
+    , READER10    = '651f4c02757911e482f80800200c9a66'
+    , READER11    = '651f4c03757911e482f80800200c9a66'
+    , READER12    = '651f4c04757911e482f80800200c9a66'
+    , READER13    = '92dab061763411e482f80800200c9a66'
+    , READER14    = '92dab062763411e482f80800200c9a66'
+    , READER15    = '92dab063763411e482f80800200c9a66'
+    
+    , READER16    = 'c29672117ba411e482f80800200c9a66'
+    , READER17    = 'c29672127ba411e482f80800200c9a66'
     , POWEREDON  = 'poweredOn'
     , POWEREDOFF = 'poweredOff'
 ;
@@ -125,7 +141,6 @@ class XdkNodeUtils extends EventEmitter {
       if (!XDK || !XDK.connect) reject("Cannot connect. XDK not discovered");
       XDK.connect((err) => {
         log.verbose(BLE,"XDK connected!");
-        console.log(util.inspect(XDK, true, null));
         if (err) {
           log.error(BLE, "Error trying to connect to XDK");
           reject(err);
