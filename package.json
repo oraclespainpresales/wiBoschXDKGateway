@@ -1,0 +1,31 @@
+{
+  "name": "wiboshxdkgateway",
+  "version": "1.0.0",
+  "description": "WEDO Industry: Gateway to receive Bosch XDK sensors data through BLE",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oraclespainpresales/wiBoschXDKGateway.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oraclespainpresales/wiBoschXDKGateway/issues"
+  },
+  "homepage": "https://github.com/oraclespainpresales/wiBoschXDKGateway#readme",
+  "dependencies": {
+    "async": "^2.6.1",
+    "block-queue": "0.0.2",
+    "buffer-reverse": "^1.0.1",
+    "command-line-args": "^5.0.2",
+    "command-line-usage": "^5.0.5",
+    "is-online": "^7.0.0",
+    "lodash": "^4.17.10",
+    "noble": "^1.9.1",
+    "npmlog-ts": "0.0.1",
+    "restify-clients": "^2.5.2"
+  }
+}
