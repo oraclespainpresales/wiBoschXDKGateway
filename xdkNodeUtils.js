@@ -268,13 +268,11 @@ class XdkNodeUtils extends EventEmitter {
             log.verbose(BLE, "Start Reading data");
             MAINLOOP = setInterval(function() {
               _.forEach(READERS, (r) => {
-                if (r.c) {
-                  r.c.read(function(err) {
-                    if (err) {
-                      log.error(BLE, err);
-                    }
-                  });
-                }
+                r.c.read(function(err) {
+                  if (err) {
+                    log.error(BLE, err);
+                  }
+                });
               });
             }, SAMPLINGRATE);
           }, (err) => {
