@@ -206,6 +206,7 @@ async.series([
       }
     );
   },
+  /**
   function(next) {
     // Retrieve DEMOZONE settings from DB
     log.info(DB, "Retrieving DEMOZONE settings for demozone %s", options.demozone);
@@ -564,6 +565,7 @@ async.series([
     log.info(QUEUE, "QUEUE system initialized successfully");
     next(null);
   },
+  **/
   function(next) {
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
