@@ -265,8 +265,10 @@ var peripheralDisconnected = () => {
   // Reset everything and start over
   clearInterval(MAINLOOP);
   _.forEach(READERS, (r) => {
-    r.c.removeAllListeners();
-    delete r.c;
+    if (r.c) {
+      r.c.removeAllListeners();
+      delete r.c;
+    }
   });
   // Empty the arrays
   WRITERS.length = 0;
@@ -282,6 +284,7 @@ noble.on('discover', function(peripheral) {
 
   if (peripheral.id == XDKID) {
     log.verbose(BLE, "XDK found!!");
+    console.log(util.inspect(peripheral, true, null));
     noble.stopScanning();
     XDK = peripheral;
     XDK.once('connect', peripheralConnected);
