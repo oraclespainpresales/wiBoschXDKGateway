@@ -135,13 +135,8 @@ var dummyReader = (data) => {
   console.log(data);
 }
 
-/**
 var READERS = [ { characteristic: READER1, parser: accelParser },
                 { characteristic: READER2, parser: sensorsParser }
-  ]
-**/
-var READERS = [ { characteristic: READER16, parser: dummyReader },
-                { characteristic: READER17, parser: dummyReader }
   ]
   , WRITERS = []
 ;
