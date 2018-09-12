@@ -121,8 +121,10 @@ class XdkNodeUtils extends EventEmitter {
 
   connect() {
     return new Promise((resolve, reject) => {
+      log.verbose(BLE,"XDK connecting...");
       if (!XDK || !XDK.connect) reject("Cannot connect. XDK not discovered");
       XDK.connect((err) => {
+        log.verbose(BLE,"XDK connected!");
         if (err) {
           log.error(BLE, "Error trying to connect to XDK");
           reject(err);
@@ -284,8 +286,8 @@ noble.on('discover', function(peripheral) {
   var manufacturerData = peripheral.advertisement.manufacturerData;
 
   if (peripheral.id == XDKID) {
-    log.verbose(BLE, "XDK found!!");
-    console.log(util.inspect(peripheral, true, null));
+    log.verbose(BLE, "XDK found (%s)", manufacturerData);
+//    console.log(util.inspect(peripheral, true, null));
     noble.stopScanning();
     XDK = peripheral;
     XDK.once('connect', peripheralConnected);
