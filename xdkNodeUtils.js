@@ -36,6 +36,13 @@ const SAMPLINGRATE = 500
 
     , READER16    = 'c29672117ba411e482f80800200c9a66'
     , READER17    = 'c29672127ba411e482f80800200c9a66'
+
+    , READER18    = '2a00'
+    , READER19    = '2a01'
+    , READER20    = '2a24'
+    , READER21    = '2a28'
+    , READER22    = '2a29'
+
     , POWEREDON  = 'poweredOn'
     , POWEREDOFF = 'poweredOff'
 ;
@@ -148,7 +155,12 @@ var READERS = [ { characteristic: READER1, parser: dummyReader },
                 { characteristic: READER14, parser: dummyReader },
                 { characteristic: READER15, parser: dummyReader },
                 { characteristic: READER16, parser: dummyReader },
-                { characteristic: READER17, parser: dummyReader }
+                { characteristic: READER17, parser: dummyReader },
+                { characteristic: READER18, parser: dummyReader },
+                { characteristic: READER19, parser: dummyReader },
+                { characteristic: READER20, parser: dummyReader },
+                { characteristic: READER21, parser: dummyReader },
+                { characteristic: READER22, parser: dummyReader }
   ]
   , WRITERS = []
 ;
