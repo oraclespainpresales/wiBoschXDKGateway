@@ -190,6 +190,7 @@ class XdkNodeUtils extends EventEmitter {
                         nextCharacteristic(err);
                         return;
                       } else {
+                        console.log("Notify ok on %s, subscribing to read", READER.characteristic);
                         characteristic.on('read', (data, isNotification) => {
                           console.log('data');
                           READER.parser(data);
