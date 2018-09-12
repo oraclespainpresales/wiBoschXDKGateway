@@ -171,17 +171,16 @@ class XdkNodeUtils extends EventEmitter {
           async.eachSeries(services, (service, nextService) => {
             service.discoverCharacteristics([], (err, characteristics) => {
               async.eachSeries(characteristics, (characteristic, nextCharacteristic) => {
-                log.verbose(BLE,"Characteristic: UUID: %s, properties: %j", characteristic.uuid, characteristic.properties);
+//                log.verbose(BLE,"Characteristic: UUID: %s, properties: %j", characteristic.uuid, characteristic.properties);
                 if (_.includes(characteristic.properties, 'write')) {
                   // We want all WRITERS available, as each one has its own task
                   WRITERS.push({ characteristic: characteristic.uuid, c: characteristic});
                 } else {
                   var READER = _.find(READERS, { characteristic: characteristic.uuid } );
                   if ( READER ) {
-                    log.verbose(BLE, "Subscribing to characteristic '%s'", READER.characteristic);
+  //                  log.verbose(BLE, "Subscribing to characteristic '%s'", READER.characteristic);
                     READER.c = characteristic;
                     READER.c.on('read', (data, isNotification) => {
-                      console.log('data');
                       READER.parser(data);
                     });
   /**
