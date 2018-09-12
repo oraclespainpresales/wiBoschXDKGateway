@@ -139,11 +139,10 @@ class XdkNodeUtils extends EventEmitter {
             log.error(BLE, error);
             return;
           }
-          console.log(util.inspect(services, true, null));
           async.eachSeries(services, (service, nextService) => {
             service.discoverCharacteristics([], (err, characteristics) => {
               async.eachSeries(characteristics, (characteristic, nextCharacteristic) => {
-                console.log(characteristic);
+                log.verbose(BLE,"Characteristic: UUID: %s, properties: %j", characteristic.uuid, characteristic.properties);
                 if (_.includes(characteristic.properties, 'write')) {
                   // We want all WRITERS available, as each one has its own task
                   WRITERS.push({ characteristic: characteristic.uuid, c: characteristic});
