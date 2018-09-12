@@ -132,6 +132,7 @@ class XdkNodeUtils extends EventEmitter {
           async.eachSeries(services, (service, nextService) => {
             service.discoverCharacteristics([], (err, characteristics) => {
               async.eachSeries(characteristics, (characteristic, nextCharacteristic) => {
+                console.log(characteristic);
                 if (_.includes(characteristic.properties, 'write')) {
                   // We want all WRITERS available, as each one has its own task
                   WRITERS.push({ characteristic: characteristic.uuid, c: characteristic});

@@ -18,7 +18,10 @@ var XdkNodeUtils = _.noop()
 
 log.timestamp = true;
 
+// In MAC:
 //const XDKID = "09c2b4046299459b8475b237d200eac4"
+
+// In RPi (built-in BLE)
 const XDKID = "fcd6bd100551"
 ;
 
