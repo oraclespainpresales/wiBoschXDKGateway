@@ -295,7 +295,7 @@ noble.on('discover', function(peripheral) {
       connect();
     }
   } else {
-    log.verbose(BLE, "Ignoring device id '%s'", peripheral.id);
+    log.verbose(BLE, "Ignoring device id '%s' (%s)", peripheral.id, (peripheral.advertisement) ? peripheral.advertisement.localName : 'unknown');
   }
 });
 
