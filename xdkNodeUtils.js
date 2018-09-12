@@ -296,11 +296,9 @@ var peripheralDisconnected = () => {
 
 noble.on('discover', function(peripheral) {
   var id = peripheral.advertisement.serviceUuids;
-  var manufacturerData = peripheral.advertisement.manufacturerData;
 
   if (peripheral.id == XDKID) {
-    log.verbose(BLE, "XDK found (%s)", manufacturerData);
-//    console.log(util.inspect(peripheral, true, null));
+    log.verbose(BLE, "XDK found (%s)", peripheral.advertisement.localName);
     noble.stopScanning();
     XDK = peripheral;
     XDK.once('connect', peripheralConnected);
@@ -310,7 +308,7 @@ noble.on('discover', function(peripheral) {
       connect();
     }
   } else {
-    log.verbose(BLE, "Ignoring device id '%s' (%s)", peripheral.id, (peripheral.advertisement) ? peripheral.advertisement.localName : 'unknown');
+//    log.verbose(BLE, "Ignoring device id '%s' (%s)", peripheral.id, (peripheral.advertisement) ? peripheral.advertisement.localName : 'unknown');
   }
 });
 
