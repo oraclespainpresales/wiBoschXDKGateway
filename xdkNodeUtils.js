@@ -132,7 +132,7 @@ var sensorsParser = (data) => {
 };
 
 var dummyReader = (data) => {
-  console.log("Data!");
+  console.log(data);
 }
 
 /**
