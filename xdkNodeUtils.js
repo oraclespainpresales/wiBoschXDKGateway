@@ -131,6 +131,11 @@ class XdkNodeUtils extends EventEmitter {
           return;
         }
         XDK.discoverServices([], (error, services) => { // Grab characteristics
+          if (error) {
+            log.error(BLE, "Error discovering services:");
+            log.error(BLE, error);
+            return;
+          }
           async.eachSeries(services, (service, nextService) => {
             service.discoverCharacteristics([], (err, characteristics) => {
               async.eachSeries(characteristics, (characteristic, nextCharacteristic) => {
