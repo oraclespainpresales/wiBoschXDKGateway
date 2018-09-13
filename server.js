@@ -198,7 +198,7 @@ async.series([
     console.log(BLE);
     console.log(BUILTIN);
     process.env.NOBLE_HCI_DEVICE_ID = BLE ? BLE : BUILTIN;
-    log.info(BLE, "Using BLE device id: " + (process.env.NOBLE_HCI_DEVICE_ID || 0));
+    log.info(BLE, "Using BLE device id: " + process.env.NOBLE_HCI_DEVICE_ID);
     next();
   },
 /**
