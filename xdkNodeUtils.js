@@ -140,27 +140,23 @@ class XdkNodeUtils extends EventEmitter {
           async.eachSeries(services, (service, nextService) => {
             service.discoverCharacteristics([], (err, characteristics) => {
               async.eachSeries(characteristics, (characteristic, nextCharacteristic) => {
-//                log.verbose(BLE,"Characteristic: UUID: %s, properties: %j", characteristic.uuid, characteristic.properties);
                 if (_.includes(characteristic.properties, 'write')) {
                   // We want all WRITERS available, as each one has its own task
                   WRITERS.push({ characteristic: characteristic.uuid, c: characteristic});
                 } else {
                   var READER = _.find(READERS, { characteristic: characteristic.uuid } );
                   if ( READER ) {
-  //                  log.verbose(BLE, "Subscribing to characteristic '%s'", READER.characteristic);
                     READER.c = characteristic;
+                    // NOBLE on RPi does not need to invoke characteristic.notify()
                     READER.c.on('read', (data, isNotification) => {
                       READER.parser(data);
                     });
-  /**
-                    console.log("Notify");
+/**
                     characteristic.notify(true, function(err) {
-                      console.log("Notify callback: " + err);
                       if (err) {
                         nextCharacteristic(err);
                         return;
                       } else {
-                        console.log("Notify ok on %s, subscribing to read", READER.characteristic);
                         characteristic.on('read', (data, isNotification) => {
                           console.log('data');
                           READER.parser(data);
@@ -185,7 +181,7 @@ class XdkNodeUtils extends EventEmitter {
             var b = new Buffer(1);
             b.writeUInt8(0x00, 0);
             if (w) {
-              log.verbose(BLE, "Request do not use Sensor Fusion");
+              log.verbose(BLE, "Request not to use Sensor Fusion");
               w.c.write(b, false, function(err) {
                 if (err) {
                   reject(err);

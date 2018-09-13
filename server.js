@@ -172,8 +172,28 @@ async.series([
   function(next) {
     log.info(PROCESS, "%s - %s", PROCESSNAME, VERSION);
     log.info(PROCESS, "Author - %s", AUTHOR);
-    log.info(BLE, "Using BLE device id: " + (process.env.NOBLE_HCI_DEVICE_ID || 0));
     next();
+  },
+  function(next) {
+    // Try to identify and use the dongle BLE if exists
+    var bledevices = child_process.execSync('hcitool dev').toString().split('\n');
+    bledevices.shift();
+    bledevices.pop();
+    //bledevices.length should have the # of BLE devices available in the Pi
+    var BLE = 0;
+    _.forEach(bledevices, (b) => {
+      var s = b.split('\t');
+      s.shift();
+      // something like: [ 'hci1', 'B8:27:EB:D4:07:48' ]
+      if (!s[1].toLowerCase().startsWith('b8')) {
+        // Built-in Bluetooth mac address always starts with B8
+        BLE = parseInt(s[0].replace('hci',''));
+      }
+    });
+
+    process.env.NOBLE_HCI_DEVICE_ID = BLE;
+
+    log.info(BLE, "Using BLE device id: " + (process.env.NOBLE_HCI_DEVICE_ID || 0));
   },
 /**
   function(next) {
@@ -570,6 +590,7 @@ async.series([
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
     xdkNodeUtils.on('on', () => {
+      log.verbose(PROCESS,"BLE on, scanning for XDK device...");
       xdkNodeUtils.scan(XDKID)
         .catch((err) => log.error(PROCESS, err));
     });
