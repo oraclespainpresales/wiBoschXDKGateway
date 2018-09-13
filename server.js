@@ -149,10 +149,9 @@ var urn = [
   'urn:oracle:wedo:industry:bosch:xdk'
 ];
 
-var STREAM1 = false
-  , STREAM2 = false
-  , STREAM3 = false
-  , payload = {}
+var STREAM1 = _.noop()
+  , STREAM2 = _.noop()
+  , STREAM3 = _.noop()
 ;
 
 function getModel(device, urn, callback) {
@@ -562,39 +561,35 @@ async.series([
 //      log.verbose(QUEUE, "Processing: %j", task);
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
-//        var payload = {};
         if (task.data.accelerometer) {
-          // STREAM1
-          payload.accelX = task.data.accelerometer.x;
-          payload.accelY = task.data.accelerometer.y;
-          payload.accelZ = task.data.accelerometer.z;
-          if (task.data.gyrometer) {
-            payload.gyroX = task.data.gyrometer.x;
-            payload.gyroY = task.data.gyrometer.y;
-            payload.gyroZ = task.data.gyrometer.z;
-          }
-          STREAM1 = true;
+          STREAM1 = task.data;
         }
         if (task.data.magneticfield) {
-          payload.magX = task.data.magneticfield.x;
-          payload.magY = task.data.magneticfield.y;
-          payload.magZ = task.data.magneticfield.z;
-          payload.magR = task.data.magneticfield.r;
-          STREAM2 = true;
+          STREAM2 = task.data;
         }
         if (task.data.light) {
-          if (task.data.light) payload.light = task.data.light;
-          if (task.data.noise) payload.noise = task.data.noise;
-          if (task.data.pressure) payload.pressure = task.data.pressure;
-          if (task.data.temperature) payload.temperature = task.data.temperature;
-          if (task.data.humidity) payload.humidity = task.data.humidity;
-          STREAM3 = true;
+          STREAM3 = task.data;
         }
         if (STREAM1 && STREAM2 && STREAM3) {
+          var payload = {};
+          payload.accelX      = STREAM1.accelerometer.x;
+          payload.accelY      = STREAM1.accelerometer.y;
+          payload.accelZ      = STREAM1.accelerometer.z;
+          payload.gyroX       = STREAM1.gyrometer.x;
+          payload.gyroY       = STREAM1.gyrometer.y;
+          payload.gyroZ       = STREAM1.gyrometer.z;
+          payload.magX        = STREAM2.magneticfield.x;
+          payload.magY        = STREAM2.magneticfield.y;
+          payload.magZ        = STREAM2.magneticfield.z;
+          payload.magR        = STREAM2.magneticfield.r;
+          payload.light       = STREAM3.light;
+          payload.noise       = STREAM3.noise;
+          payload.pressure    = STREAM3.pressure;
+          payload.temperature = STREAM3.temperature;
+          payload.humidity    = STREAM3.humidity;
           log.verbose(IOTCS, "Updating data: %j", payload);
           vd.update(payload);
-          STREAM1 = STREAM2 = STREAM3 = false;
-          payload = {};
+          STREAM1 = STREAM2 = STREAM3 = _.noop();
         }
       } else {
         log.error(QUEUE, "URN not registered: " + urn[0]);
