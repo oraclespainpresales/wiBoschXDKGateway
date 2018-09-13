@@ -561,13 +561,13 @@ async.series([
 //      log.verbose(QUEUE, "Processing: %j", task);
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
-        if (task.data.accelerometer) {
+        if (_.has(task.data, 'accelerometer') {
           STREAM1 = task.data;
         }
-        if (task.data.magneticfield) {
+        if (_.has(task.data, 'magneticfield') {
           STREAM2 = task.data;
         }
-        if (task.data.pressure) {
+        if (_.has(task.data, 'light') {
           STREAM3 = task.data;
         }
         if (STREAM1 && STREAM2 && STREAM3) {
