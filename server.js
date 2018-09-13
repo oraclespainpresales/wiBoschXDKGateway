@@ -181,7 +181,9 @@ async.series([
     bledevices.shift();
     bledevices.pop();
     //bledevices.length should have the # of BLE devices available in the Pi
-    var BLE = 0;
+    var BLE = _.noop()
+      , BUILTIN = _.noop()
+    ;
     _.forEach(bledevices, (b) => {
       var s = b.split('\t');
       s.shift();
@@ -189,9 +191,11 @@ async.series([
       if (!s[1].toLowerCase().startsWith('b8')) {
         // Built-in Bluetooth mac address always starts with B8
         BLE = parseInt(s[0].replace('hci',''));
+      } else {
+        BUILTIN = parseInt(s[0].replace('hci',''));
       }
     });
-    process.env.NOBLE_HCI_DEVICE_ID = BLE;
+    process.env.NOBLE_HCI_DEVICE_ID = BLE ? BLE : BUILTIN;
     log.info(BLE, "Using BLE device id: " + (process.env.NOBLE_HCI_DEVICE_ID || 0));
     next();
   },
