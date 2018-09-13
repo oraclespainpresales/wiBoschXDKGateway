@@ -554,15 +554,35 @@ async.series([
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
       log.verbose(QUEUE, "Processing: %j", task);
-/**
-      var vd = car.getIotVd(task.urn);
+      var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
-        log.verbose(QUEUE, "Sending data");
-        vd.update(task.data);
+        var payload = {};
+        if (task.data.accelerometer) {
+          payload.accelX = task.data.accelerometer.x;
+          payload.accelY = task.data.accelerometer.y;
+          payload.accelZ = task.data.accelerometer.z;
+        }
+        if (task.data.gyrometer) {
+          payload.gyroX = task.data.gyrometer.x;
+          payload.gyroY = task.data.gyrometer.y;
+          payload.gyroZ = task.data.gyrometer.z;
+        }
+        if (task.data.magneticfield) {
+          payload.magX = task.data.magneticfield.x;
+          payload.magY = task.data.magneticfield.y;
+          payload.magZ = task.data.magneticfield.z;
+          payload.magR = task.data.magneticfield.r;
+        }
+        if (task.data.light) payload.light = task.data.light;
+        if (task.data.noise) payload.noise = task.data.noise;
+        if (task.data.pressure) payload.pressure = task.data.pressure;
+        if (task.data.temperature) payload.temperature = task.data.temperature;
+        if (task.data.humidity) payload.humidity = task.data.humidity;
+        log.verbose(IOTCS, "Updating data: %j", payload);
+        vd.update(payload);
       } else {
-        log.error(QUEUE, "URN not registered: " + task.urn);
+        log.error(QUEUE, "URN not registered: " + urn[0]);
       }
-**/
       done(); // Let queue handle next task
     });
     log.info(QUEUE, "QUEUE system initialized successfully");
