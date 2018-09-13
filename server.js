@@ -8,6 +8,7 @@ const async = require('async')
     , queue = require('block-queue')
     , isOnline = require('is-online')
     , fs = require('fs')
+    , child_process = require('child_process')
     , commandLineArgs = require('command-line-args')
     , getUsage = require('command-line-usage')
 ;

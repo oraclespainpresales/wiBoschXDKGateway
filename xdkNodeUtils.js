@@ -3,7 +3,6 @@ const async = require('async')
     , noble = require('noble')
     , util = require('util')
     , log = require('npmlog-ts')
-    , child_process = require('child_process')
     , EventEmitter = require('events').EventEmitter
 ;
 
