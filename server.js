@@ -230,7 +230,6 @@ async.series([
       }
     );
   },
-  /**
   function(next) {
     // Retrieve DEMOZONE settings from DB
     log.info(DB, "Retrieving DEMOZONE settings for demozone %s", options.demozone);
@@ -554,42 +553,21 @@ async.series([
     // Initialize Queue system
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
-      if ( task.type === DATA) {
-        log.verbose(QUEUE, "Processing: %j", task);
-        var vd = car.getIotVd(task.urn);
-        if (vd) {
-          log.verbose(QUEUE, "Sending data");
-          vd.update(task.data);
-        } else {
-          log.error(QUEUE, "URN not registered: " + task.urn);
-        }
-      } else if ( task.type === ALERT) {
-        var a = _.find(alerts, {alertUrn: task.urn});
-        if (a) {
-          var vd = car.getIotVd(a.deviceUrn);
-          if (vd) {
-            var alert = vd.createAlert(task.urn);
-            Object.keys(task.data).forEach(function(key) {
-              alert.fields[key] = task.data[key];
-            });
-            log.verbose(QUEUE, "Sending alert");
-            alert.raise();
-            log.verbose(IOTCS, "%s alert raised with data %j", task.urn, task.data);
-          } else {
-            log.error(QUEUE, "Device for alert '" + a.alertUrn + "' not registered: " + a.deviceUrn);
-          }
-        } else {
-          log.error(QUEUE, "Alert URN not registered: " + task.urn);
-        }
+      log.verbose(QUEUE, "Processing: %j", task);
+/**
+      var vd = car.getIotVd(task.urn);
+      if (vd) {
+        log.verbose(QUEUE, "Sending data");
+        vd.update(task.data);
       } else {
-        // should never happen
+        log.error(QUEUE, "URN not registered: " + task.urn);
       }
+**/
       done(); // Let queue handle next task
     });
     log.info(QUEUE, "QUEUE system initialized successfully");
     next(null);
   },
-  **/
   function(next) {
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
@@ -606,7 +584,10 @@ async.series([
     });
 
     xdkNodeUtils.on('data', data => {
-      log.verbose(BLE, "DATA: %j", data);
+      q.push({
+        type: DATA,
+        data: data
+      });
     });
     next();
   }
