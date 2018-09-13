@@ -195,7 +195,7 @@ async.series([
         BUILTIN = parseInt(s[0].replace('hci',''));
       }
     });
-    process.env.NOBLE_HCI_DEVICE_ID = (BLE === undefined) ? BLE : BUILTIN;
+    process.env.NOBLE_HCI_DEVICE_ID = (BLE !== undefined) ? BLE : BUILTIN;
     log.info(BLE, "Using BLE device id: " + process.env.NOBLE_HCI_DEVICE_ID);
     next();
   },
