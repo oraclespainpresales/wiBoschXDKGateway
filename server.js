@@ -149,6 +149,12 @@ var urn = [
   'urn:oracle:wedo:industry:bosch:xdk'
 ];
 
+var STREAM1 = false
+  , STREAM2 = false
+  , STREAM3 = false
+  , payload = {}
+;
+
 function getModel(device, urn, callback) {
   device.getDeviceModel(urn, function (response, error) {
     if (error) {
@@ -553,33 +559,43 @@ async.series([
     // Initialize Queue system
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
-      log.verbose(QUEUE, "Processing: %j", task);
+//      log.verbose(QUEUE, "Processing: %j", task);
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
-        var payload = {};
+//        var payload = {};
         if (task.data.accelerometer) {
+          // STREAM1
           payload.accelX = task.data.accelerometer.x;
           payload.accelY = task.data.accelerometer.y;
           payload.accelZ = task.data.accelerometer.z;
-        }
-        if (task.data.gyrometer) {
-          payload.gyroX = task.data.gyrometer.x;
-          payload.gyroY = task.data.gyrometer.y;
-          payload.gyroZ = task.data.gyrometer.z;
+          if (task.data.gyrometer) {
+            payload.gyroX = task.data.gyrometer.x;
+            payload.gyroY = task.data.gyrometer.y;
+            payload.gyroZ = task.data.gyrometer.z;
+          }
+          STREAM1 = true;
         }
         if (task.data.magneticfield) {
           payload.magX = task.data.magneticfield.x;
           payload.magY = task.data.magneticfield.y;
           payload.magZ = task.data.magneticfield.z;
           payload.magR = task.data.magneticfield.r;
+          STREAM2 = true;
         }
-        if (task.data.light) payload.light = task.data.light;
-        if (task.data.noise) payload.noise = task.data.noise;
-        if (task.data.pressure) payload.pressure = task.data.pressure;
-        if (task.data.temperature) payload.temperature = task.data.temperature;
-        if (task.data.humidity) payload.humidity = task.data.humidity;
-        log.verbose(IOTCS, "Updating data: %j", payload);
-        vd.update(payload);
+        if (task.data.light) {
+          if (task.data.light) payload.light = task.data.light;
+          if (task.data.noise) payload.noise = task.data.noise;
+          if (task.data.pressure) payload.pressure = task.data.pressure;
+          if (task.data.temperature) payload.temperature = task.data.temperature;
+          if (task.data.humidity) payload.humidity = task.data.humidity;
+          STREAM3 = true;
+        }
+        if (STREAM1 && STREAM2 && STREAM3) {
+          log.verbose(IOTCS, "Updating data: %j", payload);
+          vd.update(payload);
+          STREAM1 = STREAM2 = STREAM3 = false;
+          payload = {};
+        }
       } else {
         log.error(QUEUE, "URN not registered: " + urn[0]);
       }
