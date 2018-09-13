@@ -567,7 +567,7 @@ async.series([
         if (task.data.magneticfield) {
           STREAM2 = task.data;
         }
-        if (task.data.light) {
+        if (task.data.pressure) {
           STREAM3 = task.data;
         }
         if (STREAM1 && STREAM2 && STREAM3) {
