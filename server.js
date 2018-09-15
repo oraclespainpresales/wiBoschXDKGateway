@@ -629,7 +629,7 @@ async.series([
           if (kafkaProducer) {
             var kafkaMessage = {
               demozone: options.demozone,
-              event: XDK,
+              eventname: XDK,
               payload: payload
             };
             kafkaProducer.send([{ topic: kafkaSetup.topic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
