@@ -164,10 +164,10 @@ var q = _.noop();
 var queueConcurrency = 1;
 // Initializing QUEUE variables END
 
-var , Producer       = kafka.Producer
-    , kafkaClient    = _.noop()
-    , kafkaProducer  = _.noop()
-    , kafkaCnxStatus = DISCONNECTED;
+var Producer       = kafka.Producer
+  , kafkaClient    = _.noop()
+  , kafkaProducer  = _.noop()
+  , kafkaCnxStatus = DISCONNECTED;
 ;
 
 var dbClient = restify.createJsonClient({
