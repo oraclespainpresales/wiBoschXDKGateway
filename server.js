@@ -677,7 +677,7 @@ async.series([
     // Start Kafka client
     log.verbose(KAFKA, "Connecting to Zookeper host at %s...", kafkaSetup.zookeeper);
     startKafka(next);
-  }
+  },
   function(next) {
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
