@@ -196,29 +196,6 @@ function startKafka(cb) {
   kafkaProducer = new Producer(kafkaClient);
   kafkaProducer.on('ready', () => {
     log.info(KAFKA, "Producer ready");
-    if (inboundQueue.length > 0) {
-      // Sent pending messages
-      log.info(KAFKA, "Sending %d pending messages...", inboundQueue.length);
-
-      async.reject(inboundQueue, (msg, callback) => {
-        kafkaProducer.send([{ topic: msg.topic, messages: JSON.stringify(msg.payload), partition: 0 }], (err, data) => {
-          if (err) {
-            log.error("", err);
-            // Abort resending
-            callback(err, true);
-          } else {
-            log.verbose(KAFKA, "Message sent to topic %s, partition %s and id %d", Object.keys(data)[0], Object.keys(Object.keys(data)[0])[0], data[Object.keys(data)[0]][Object.keys(Object.keys(data)[0])[0]]);
-            callback(err, false);
-          }
-        });
-      }, (err, results) => {
-        if (err) {
-          log.error(err)
-        } else {
-          log.info(KAFKA, "Done");
-        }
-      });
-    }
   });
   kafkaProducer.on('error', (err) => {
     log.error(KAFKA, "Error initializing KAFKA producer: " + err.message);
