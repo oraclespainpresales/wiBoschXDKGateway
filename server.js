@@ -180,7 +180,7 @@ var dbClient = restify.createJsonClient({
 var kafkaSetup = {};
 
 function startKafka(cb) {
-  kafkaClient = new kafka.Client(options.zookeeperhost, "RETAIL", {sessionTimeout: 1000});
+  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
   kafkaClient.zk.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
     log.verbose(KAFKA, "Server connected!");
