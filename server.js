@@ -5,6 +5,7 @@ const async = require('async')
     , log = require('npmlog-ts')
     , util = require('util')
     , restify = require('restify-clients')
+    , kafka = require('kafka-node')
     , queue = require('block-queue')
     , isOnline = require('is-online')
     , fs = require('fs')
@@ -36,16 +37,21 @@ const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
     , QUEUE   = "QUEUE"
     , DATA    = "DATA"
     , DB      = "DB"
+    , KAFKA   = "KAFKA"
     , ALERT   = "ALERT"
     , XDK     = "XDK"
 ;
 
-const DBHOST       = "https://apex.digitalpracticespain.com"
-    , DBURI        = '/ords/pdb1/wedoindustry'
-    , DBDEMOZONE   = '/setup/demozone/{demozone}'
-    , DBIOTCSSETUP = '/setup/iot/{demozone}/am'
-    , DBDEVICEDATA = '/device'
-    , TIMEOUT      = 2000
+const DBHOST             = "https://apex.digitalpracticespain.com"
+    , DBURI              = '/ords/pdb1/wedoindustry'
+    , DBDEMOZONE         = '/setup/demozone/{demozone}'
+    , DBIOTCSSETUP       = '/setup/iot/{demozone}/am'
+    , EVENTHUBSETUP      = '/setup/eventhub'
+    , DBDEVICEDATA       = '/device'
+    , TIMEOUT            = 2000
+    , EVENT              = 'XDK'
+    , CONNECTED          = "CONNECTED"
+    , DISCONNECTED       = "DISCONNECTED"
     , IOTAPI             = '/iot/api/v2'
     , IOTGETDEVICESCOUNT = '/devices/count'
     , IOTDEVICE          = '/devices'
@@ -60,7 +66,6 @@ const optionDefinitions = [
   { name: 'help', alias: 'h', type: Boolean },
   { name: 'verbose', alias: 'v', type: Boolean, defaultOption: false }
 ];
-
 const sections = [
   {
     header: PROCESSNAME,
@@ -89,23 +94,13 @@ const sections = [
     ]
   }
 ];
-
-var options = _.noop();
-
-try {
-  options = commandLineArgs(optionDefinitions);
-} catch (e) {
-  console.log(getUsage(sections));
-  console.log(e.message);
-  process.exit(-1);
-}
-
-if (options.help) {
-  console.log(getUsage(sections));
-  process.exit(0);
-}
-
-if (!options.demozone) {
+const options = commandLineArgs(optionDefinitions);
+const valid =
+  options.help ||
+  (
+    options.demozone
+  );
+if (!valid) {
   console.log(getUsage(sections));
   process.exit(-1);
 }
@@ -169,10 +164,78 @@ var q = _.noop();
 var queueConcurrency = 1;
 // Initializing QUEUE variables END
 
+var , Producer       = kafka.Producer
+    , kafkaClient    = _.noop()
+    , kafkaProducer  = _.noop()
+    , kafkaCnxStatus = DISCONNECTED;
+;
+
 var dbClient = restify.createJsonClient({
   url: DBHOST,
   rejectUnauthorized: false
 });
+
+// KAFKA BEGIN
+
+var kafkaSetup = {};
+
+function startKafka(cb) {
+  kafkaClient = new kafka.Client(options.zookeeperhost, "RETAIL", {sessionTimeout: 1000});
+  kafkaClient.zk.client.on('connected', () => {
+    kafkaCnxStatus = CONNECTED;
+    log.verbose(KAFKA, "Server connected!");
+  });
+  kafkaClient.zk.client.on('disconnected', () => {
+    kafkaCnxStatus = DISCONNECTED;
+    log.verbose(KAFKA, "Server disconnected!");
+  });
+  kafkaClient.zk.client.on('expired', () => {
+    kafkaCnxStatus = DISCONNECTED;
+    log.verbose(KAFKA, "Server disconnected!");
+  });
+  kafkaProducer = new Producer(kafkaClient);
+  kafkaProducer.on('ready', () => {
+    log.info(KAFKA, "Producer ready");
+    if (inboundQueue.length > 0) {
+      // Sent pending messages
+      log.info(KAFKA, "Sending %d pending messages...", inboundQueue.length);
+
+      async.reject(inboundQueue, (msg, callback) => {
+        kafkaProducer.send([{ topic: msg.topic, messages: JSON.stringify(msg.payload), partition: 0 }], (err, data) => {
+          if (err) {
+            log.error("", err);
+            // Abort resending
+            callback(err, true);
+          } else {
+            log.verbose(KAFKA, "Message sent to topic %s, partition %s and id %d", Object.keys(data)[0], Object.keys(Object.keys(data)[0])[0], data[Object.keys(data)[0]][Object.keys(Object.keys(data)[0])[0]]);
+            callback(err, false);
+          }
+        });
+      }, (err, results) => {
+        if (err) {
+          log.error(err)
+        } else {
+          log.info(KAFKA, "Done");
+        }
+      });
+    }
+  });
+  kafkaProducer.on('error', (err) => {
+    log.error(KAFKA, "Error initializing KAFKA producer: " + err.message);
+  });
+  if (typeof(cb) == 'function') cb();
+}
+
+function stopKafka(cb) {
+  if (kafkaClient) {
+    kafkaClient.close(() => {
+      cb();
+    });
+  } else {
+    cb();
+  }
+}
+// KAFKA END
 
 async.series([
   function(next) {
@@ -204,22 +267,6 @@ async.series([
     log.info(BLE, "Using BLE device id: " + process.env.NOBLE_HCI_DEVICE_ID);
     next();
   },
-/**
-  function(next) {
-    // Initializing REST server
-    log.info(REST, "Initializing REST Server");
-    app.use(bodyParser.urlencoded({ extended: true }));
-    app.use(bodyParser.json());
-    app.use(restURI, router);
-    router.get(getStatusURI, function(req, res) {
-      res.send(mainStatus);
-    });
-    server.listen(PORT, function() {
-      log.info(REST, "REST Server initialized successfully");
-      next(null);
-    });
-  },
-**/
   function(next) {
     // Check for internet connectivity; and wait forever if neccessary until it's available
     var internet = false;
@@ -281,6 +328,18 @@ async.series([
       log.verbose(DB, "Hostname:    %s", iotsettings.url);
       log.verbose(DB, "Credentials: %s / %s", iotsettings.username, iotsettings.password);
       next(null);
+    });
+  },
+  function(next) {
+    log.verbose(PROCESS, "Retrieving EventHub setup");
+    dbClient.get(DBURI + EVENTHUBSETUP, function(err, req, res, obj) {
+      if (err) {
+        next(err.message);
+      }
+      var jBody = JSON.parse(res.body);
+      kafkaSetup.zookeeper = jBody.zookeeperhost;
+      kafkaSetup.topic     = jBody.eventtopic;
+      next();
     });
   },
   function(next) {
@@ -558,7 +617,6 @@ async.series([
     // Initialize Queue system
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
-//      log.verbose(QUEUE, "Processing: %j", task);
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
         if (_.has(task.data, 'accelerometer')) {
@@ -571,6 +629,7 @@ async.series([
           STREAM3 = task.data;
         }
         if (STREAM1 && STREAM2 && STREAM3) {
+          // Send all data in one single stream
           var payload = {};
           payload.accelX      = STREAM1.accelerometer.x;
           payload.accelY      = STREAM1.accelerometer.y;
@@ -589,6 +648,21 @@ async.series([
           payload.humidity    = STREAM3.humidity;
           log.verbose(IOTCS, "Updating data: %j", payload);
           vd.update(payload);
+          // If KAFKA is available, send event
+          if (kafkaProducer) {
+            var kafkaMessage = {
+              demozone: options.demozone,
+              event: XDK,
+              payload: payload
+            };
+            kafkaProducer.send([{ topic: kafkaSetup.topic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
+              if (err) {
+                log.error(KAFKA, err);
+              } else {
+                log.verbose(KAFKA, "Message sent to topic %s, partition %s and id %d", Object.keys(data)[0], Object.keys(Object.keys(data)[0])[0], data[Object.keys(data)[0]][Object.keys(Object.keys(data)[0])[0]]);
+              }
+            });
+          }
           STREAM1 = STREAM2 = STREAM3 = _.noop();
         }
       } else {
@@ -599,6 +673,11 @@ async.series([
     log.info(QUEUE, "QUEUE system initialized successfully");
     next(null);
   },
+  function(next) {
+    // Start Kafka client
+    log.verbose(KAFKA, "Connecting to Zookeper host at %s...", kafkaSetup.zookeeper);
+    startKafka(next);
+  }
   function(next) {
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
