@@ -201,6 +201,7 @@ class XdkNodeUtils extends EventEmitter {
               });
             }
             XDK.ready = true;
+            nextService();
 /**
             // Start sampling
             var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
