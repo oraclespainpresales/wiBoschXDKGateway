@@ -200,6 +200,8 @@ class XdkNodeUtils extends EventEmitter {
                 }
               });
             }
+            XDK.ready = true;
+/**
             // Start sampling
             var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
             if (w) {
@@ -224,12 +226,52 @@ class XdkNodeUtils extends EventEmitter {
                 });
               });
             }, SAMPLINGRATE);
+**/
           }, (err) => {
             if (err) reject(err);
-            reseolve();
+            resolve();
           });
         });
       });
+    });
+  }
+
+  sampling(mode) {
+    return new Promise((resolve, reject) => {
+      if (mode.toUpperCase() === "START") {
+        if (!XDK || !XDK.connect) reject("Cannot start sampling. XDK not discovered");
+        if (!XDK.ready) reject("Cannot start sampling. XDK not ready");
+
+        // Start sampling
+        var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
+        if (w) {
+          log.verbose(BLE, "Request start sampling");
+
+          var b = new Buffer(1);
+          b.writeUInt8(0x01, 0);
+
+          w.c.write(b, false, function(err) {
+            if (err) {
+              reject(err);
+            }
+          });
+        }
+        log.verbose(BLE, "Start Reading data");
+        MAINLOOP = setInterval(function() {
+          _.forEach(READERS, (r) => {
+            r.c.read(function(err) {
+              if (err) {
+                log.error(BLE, err);
+              }
+            });
+          });
+        }, SAMPLINGRATE);
+        resolve();
+      } else if (mode.toUpperCase() === "STOP") {
+        resolve();
+      } else {
+        reject("Unknown mode: " + mode);
+      }
     });
   }
 
@@ -251,8 +293,6 @@ class XdkNodeUtils extends EventEmitter {
       resolve();
     })
   }
-
-
 }
 
 noble.on('stateChange', function(state) {
@@ -297,6 +337,7 @@ noble.on('discover', function(peripheral) {
     log.verbose(BLE, "XDK found (%s)", peripheral.advertisement.localName);
     noble.stopScanning();
     XDK = peripheral;
+    XDK.ready = false;
     XDK.once('connect', peripheralConnected);
     XDK.once('disconnect', peripheralDisconnected);
     self.emit('discovered');

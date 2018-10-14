@@ -164,19 +164,58 @@ var q = _.noop();
 var queueConcurrency = 1;
 // Initializing QUEUE variables END
 
+// Initializing KAFKA BEGIN
 var Producer       = kafka.Producer
+  , Consumer       = kafka.Consumer
   , kafkaClient    = _.noop()
   , kafkaProducer  = _.noop()
+  , kafkaConsumer  = _.noop()
   , kafkaCnxStatus = DISCONNECTED;
 ;
+// Initializing KAFKA END
 
 var dbClient = restify.createJsonClient({
   url: DBHOST,
   rejectUnauthorized: false
 });
 
+// Helpers BEGIN
+function IsJsonString(str) {
+  item = typeof item !== "string"
+    ? JSON.stringify(item)
+    : item;
+  try {
+    item = JSON.parse(item);
+  } catch (e) {
+    return false;
+  }
+  return (typeof item === "object" && item !== null);
+}
+
+function validate(payload) {
+  if (!payload.demozone || !payload.component || !payload.action) {
+    log.verbose(KAFKA, "Ignoring invalid JSON");
+    return false;
+  }
+  if ( payload.demozone !== options.demozone) {
+    log.verbose(KAFKA, "Ignoring action for other demozone (%s vs %s)", payload.demozone, options.demozone);
+    return false;
+  }
+  if ( payload.component.toUpperCase() !== XDK) {
+    log.verbose(KAFKA, "Ignoring action for invalid component (%s)", payload.component);
+    return false;
+  }
+  if (!_.includes(ACTIONS, payload.action.toUpperCase())) {
+    log.verbose(KAFKA, "Ignoring invalid action (%s)", payload.component);
+    return false;
+  }
+  return true;
+}
+// Helper END
+
 // KAFKA BEGIN
 
+const ACTIONS = [ "START", "STOP" ];
 var kafkaSetup = {};
 
 function startKafka(cb) {
@@ -193,6 +232,35 @@ function startKafka(cb) {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
+
+  // CONSUMER
+  kafkaConsumer = new Consumer(
+    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { autoCommit: true }
+  );
+
+  kafkaConsumer.on('message', (data) => {
+    log.verbose(KAFKA, "Incoming message on topic '%s', payload: %s", data.topic, data.value);
+    // Start validation
+    if (!IsJsonString(data.value)) {
+      log.verbose(KAFKA, "Ignoring invalid JSON string");
+      return;
+    }
+    var payload = JSON.parse(data.value);
+    if (!validate(payload)) {
+      return;
+    }
+
+  });
+
+  kafkaConsumer.on('ready', () => {
+    log.verbose(KAFKA, "Consumer ready at topic '%s'", kafkaSetup.actiontopic);
+  });
+
+  kafkaConsumer.on('error', (err) => {
+    log.error(KAFKA, "Error initializing KAFKA consumer: " + err.message);
+  });
+
+  // PRODUCER
   kafkaProducer = new Producer(kafkaClient);
   kafkaProducer.on('ready', () => {
     log.info(KAFKA, "Producer ready");
@@ -314,8 +382,9 @@ async.series([
         next(err.message);
       }
       var jBody = JSON.parse(res.body);
-      kafkaSetup.zookeeper = jBody.zookeeperhost;
-      kafkaSetup.topic     = jBody.eventtopic;
+      kafkaSetup.zookeeper   = jBody.zookeeperhost;
+      kafkaSetup.eventtopic  = jBody.eventtopic;
+      kafkaSetup.actiontopic = jBody.actiontopic;
       next();
     });
   },
@@ -360,7 +429,7 @@ async.series([
         next(new Error("Unexpected HTTP return code when pinging IoTCS instance: " + res.statusCode));
         return;
       }
-      log.info(IOTCS, "IoTCS instance at %s successfully ping'ed", iotsettings.hostname)
+      log.info(IOTCS, "IoTCS instance at %s successfully ping'ed", iotsettings.url)
       next(null);
     });
   },
@@ -632,7 +701,7 @@ async.series([
               eventname: XDK,
               payload: payload
             };
-            kafkaProducer.send([{ topic: kafkaSetup.topic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
+            kafkaProducer.send([{ topic: kafkaSetup.eventtopic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
               if (err) {
                 log.error(KAFKA, err);
               } else {
@@ -677,6 +746,9 @@ async.series([
       });
     });
     next();
+  },
+  function(next) {
+    xdkNodeUtils.sampling('start');
   }
 /**
   function(next) {
