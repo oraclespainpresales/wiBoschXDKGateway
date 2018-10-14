@@ -180,7 +180,7 @@ var dbClient = restify.createJsonClient({
 });
 
 // Helpers BEGIN
-function IsJsonString(str) {
+function IsJsonString(item) {
   item = typeof item !== "string"
     ? JSON.stringify(item)
     : item;
