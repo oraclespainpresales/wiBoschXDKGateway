@@ -269,6 +269,26 @@ class XdkNodeUtils extends EventEmitter {
         }, SAMPLINGRATE);
         resolve();
       } else if (mode.toUpperCase() === "STOP") {
+        if (!XDK || !XDK.connect) reject("Cannot stop sampling. XDK not discovered");
+        if (!XDK.ready) reject("Cannot stop sampling. XDK not ready");
+
+        log.verbose(BLE, "Stop Reading data");
+        clearInterval(MAINLOOP);
+
+        // Stop sampling
+        var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
+        if (w) {
+          log.verbose(BLE, "Request stop sampling");
+
+          var b = new Buffer(1);
+          b.writeUInt8(0x00, 0);
+
+          w.c.write(b, false, function(err) {
+            if (err) {
+              reject(err);
+            }
+          });
+        }
         resolve();
       } else {
         reject("Unknown mode: " + mode);
