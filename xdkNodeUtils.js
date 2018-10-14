@@ -201,7 +201,7 @@ class XdkNodeUtils extends EventEmitter {
               });
             }
             XDK.ready = true;
-            nextService();
+            resolve();
 /**
             // Start sampling
             var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
@@ -228,10 +228,10 @@ class XdkNodeUtils extends EventEmitter {
               });
             }, SAMPLINGRATE);
 **/
-          }, (err) => {
+        }/**, (err) => {
             if (err) reject(err);
             resolve();
-          });
+          }**/);
         });
       });
     });
