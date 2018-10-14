@@ -250,7 +250,7 @@ function startKafka(cb) {
       return;
     }
 
-    xdkNodeUtils.sampling(payload.action);
+    xdkNodeUtils.sampling(payload.action).catch((err) => log.error(PROCESS, err));;
 
   });
 
