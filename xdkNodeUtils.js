@@ -177,7 +177,7 @@ class XdkNodeUtils extends EventEmitter {
               return;
             }
             // Do not use Sensor Fusion
-            w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_USE_SENSOR_FUSION } );
+            var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_USE_SENSOR_FUSION } );
             var b = new Buffer(1);
             b.writeUInt8(0x00, 0);
             if (w) {
