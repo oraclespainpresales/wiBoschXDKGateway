@@ -736,6 +736,9 @@ async.series([
     xdkNodeUtils.on('discovered', () => {
       log.verbose(PROCESS,"XDK discovered, trying to connect...");
       xdkNodeUtils.connect()
+        .then(() => {
+          xdkNodeUtils.sampling('start');
+        })
         .catch((err) => log.error(PROCESS, err));
     });
 
@@ -748,7 +751,6 @@ async.series([
     next();
   },
   function(next) {
-    xdkNodeUtils.sampling('start');
   }
 /**
   function(next) {
