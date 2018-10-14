@@ -250,6 +250,8 @@ function startKafka(cb) {
       return;
     }
 
+    xdkNodeUtils.sampling(payload.action);
+
   });
 
   kafkaConsumer.on('ready', () => {
