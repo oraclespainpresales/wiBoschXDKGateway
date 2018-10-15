@@ -476,8 +476,7 @@ async.series([
     dcl = require('./device-library.node');
     dcl = dcl({debug: false});
     async.eachSeries( xdkTrucks, (xdkTruck, nextXdk) => {
-      log.verbose(IOTCS, "Retrieving provisioning data for device '%s'", truck.truckid);
-
+      log.verbose(IOTCS, "Retrieving provisioning data for device '%s'", xdkTruck.deviceid);
       // We have the device ID and the provisioning data. Create the provisioning file
       var file = xdkTruck.deviceid.toUpperCase() + '.conf';
       fs.outputFileSync(file, xdkTruck.provisiondata);
