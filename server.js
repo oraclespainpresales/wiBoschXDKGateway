@@ -263,7 +263,7 @@ function startKafka(cb) {
 
     currentTruckId = XDK + payload.truckid.toUpperCase();
 
-    var xdkDevice = _.find(devices, (d) => { return d.getName === currentTruckId });
+    var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
     if (!xdkDevice) {
       log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
       return;
@@ -591,7 +591,7 @@ async.series([
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
       // Get device based on currentTruckId
-      var xdkDevice = _.find(devices, (d) => { return d.getName === currentTruckId });
+      var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
         if (_.has(task.data, 'accelerometer')) {
