@@ -181,7 +181,7 @@ var dbClient = restify.createJsonClient({
   url: DBHOST,
   connectTimeout: 10000,
   requestTimeout: 10000,
-  retry: true,
+  retry: false,
   rejectUnauthorized: false,
   headers: {
     "content-type": "application/json",
