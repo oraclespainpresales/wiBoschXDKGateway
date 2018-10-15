@@ -9,6 +9,7 @@ const async = require('async')
     , queue = require('block-queue')
     , isOnline = require('is-online')
     , fs = require('fs')
+    , glob = require("glob")
     , child_process = require('child_process')
     , commandLineArgs = require('command-line-args')
     , getUsage = require('command-line-usage')
@@ -42,22 +43,23 @@ const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
     , XDK     = "XDK"
 ;
 
-const DBHOST             = "https://apex.digitalpracticespain.com"
-    , DBURI              = '/ords/pdb1/wedoindustry'
-    , DBDEMOZONE         = '/setup/demozone/{demozone}'
-    , DBIOTCSSETUP       = '/setup/iot/{demozone}/am'
-    , EVENTHUBSETUP      = '/setup/eventhub'
-    , DBDEVICEDATA       = '/device'
-    , TIMEOUT            = 2000
-    , EVENT              = 'XDK'
-    , CONNECTED          = "CONNECTED"
-    , DISCONNECTED       = "DISCONNECTED"
-    , IOTAPI             = '/iot/api/v2'
-    , IOTGETDEVICESCOUNT = '/devices/count'
-    , IOTDEVICE          = '/devices'
-    , IOTPROVISION       = '/provisioner/device'
-    , DEVICEFILE         = 'device.conf'
-    , PASSWORD           = 'Welcome1'
+const DBHOST              = "https://apex.digitalpracticespain.com"
+    , DBURI               = '/ords/pdb1/wedoindustry'
+    , DBDEMOZONE          = '/setup/demozone/{demozone}'
+    , DBIOTCSSETUP        = '/setup/iot/{demozone}/am'
+    , EVENTHUBSETUP       = '/setup/eventhub'
+    , DBDEVICEDATA        = '/device'
+    , XDKTRUCKSDEVICEDATA = '/iot/xdk/{demozone}'
+    , TIMEOUT             = 2000
+    , EVENT               = 'XDK'
+    , CONNECTED           = "CONNECTED"
+    , DISCONNECTED        = "DISCONNECTED"
+    , IOTAPI              = '/iot/api/v2'
+    , IOTGETDEVICESCOUNT  = '/devices/count'
+    , IOTDEVICE           = '/devices'
+    , IOTPROVISION        = '/provisioner/device'
+    , DEVICEFILE          = 'device.conf'
+    , PASSWORD            = 'Welcome1'
 ;
 
 // Initialize input arguments
@@ -136,6 +138,7 @@ var setupDemozone    = _.noop()
   , devices          = []
   , dcl              = _.noop()
   , Device           = require('./device')
+  , xdkTrucks        = _.noop()
   , xdkDevice        = _.noop()
   , storeFile        = _.noop()
 ;
@@ -176,7 +179,14 @@ var Producer       = kafka.Producer
 
 var dbClient = restify.createJsonClient({
   url: DBHOST,
-  rejectUnauthorized: false
+  connectTimeout: 10000,
+  requestTimeout: 10000,
+  retry: true,
+  rejectUnauthorized: false,
+  headers: {
+    "content-type": "application/json",
+    "accept": "application/json"
+  }
 });
 
 // Helpers BEGIN
@@ -436,144 +446,51 @@ async.series([
     });
   },
   function(next) {
-    // Check for "device.conf" file
-    if (fs.existsSync('./' + DEVICEFILE)) {
-      log.verbose(IOTCS, "Device file '%s' found", DEVICEFILE);
-      next(null);
-    } else {
-      // Device file not found, let's star the whole process of creating the device
-      // Retrieve IoTCS settings from DB
-      isNewDevice = true;
-      log.error(IOTCS, "Device file '%s' not found", DEVICEFILE);
-      log.verbose(DB, "Retrieving IoTCS device data for demozone %s", options.demozone);
-      dbClient.get(DBURI + DBDEVICEDATA + '/' + options.demozone, (err, req, res, data) => {
-        if (err) {
-          log.error(DB,"Error from DB call: " + err.statusCode);
-          next(err);
-          return;
-        }
-        if (!(data.items.length === 0 || !data.items[0].deviceid || data.items[0].deviceid === "")) {
-          // Device exists in the DB and maybe in IoTCS too. Let's proceed to decommission it before creating it again
-          log.verbose(DB, "Existing device setup for demozone: %s with ID %s", options.demozone, data.items[0].deviceid);
-          async.series([
-            function(n) {
-              // First, let's try to decommission the device
-              log.verbose(IOTCS, "Decommission device with id %s...", data.items[0].deviceid);
-              iotClient.del(IOTAPI + IOTDEVICE + '/' + data.items[0].deviceid, (err, req, res, data) => {
-                if (err) {
-                  if (err.statusCode == 404) {
-                    // Safely ignore
-                    log.verbose(IOTCS, "Device not found");
-                    n(null);
-                    return;
-                  }
-                  if (err.statusCode) {
-                    log.error(IOTCS,"Error decommissioning device: " + err.statusCode);
-                  }
-                  n(err);
-                  return;
-                }
-                log.verbose(IOTCS, "Device decommissioned successfully");
-                n(null);
-              });
-            },
-            function(n) {
-              // Second, remove the device data entry in the DB
-              log.verbose(DB, "Removing device data in DB for demozone %s", options.demozone);
-              dbClient.del(DBURI + DBDEVICEDATA + '/' + options.demozone, (err, req, res, data) => {
-                if (err) {
-                  log.error(DB,"Error from DB call: " + err.statusCode);
-                  n(err);
-                  return;
-                }
-                log.verbose(DB, "Device data in DB for demozone %s successfully removed", options.demozone);
-                n(null);
-              });
-            }
-          ], function(err, results) {
-            if (err) {
-              log.error(PROCESS, (err.message) ? err.message : err);
-              process.exit(2);
-            }
-          });
-        }
-        // We have to create a new device, get the conf file, create the link, and finally register it in the DB
-        async.series([
-          function(n) {
-            // Create the device in IoTCS
-            activationId = uuidv4();
-            var body = {
-                hardwareId: activationId,
-                name: "IoT Racing Car (" + options.demozone.toLowerCase().charAt(0).toUpperCase() + options.demozone.toLowerCase().slice(1) + ")",
-                manufacturer: options.demozone.toUpperCase(),
-                modelNumber: "RPi3",
-                serialNumber: demozoneData.raspberryid,
-                sharedSecret: new Buffer(PASSWORD).toString('base64')
-            }
-            log.verbose(IOTCS, "Creating new device with activation id: %s", activationId);
-            iotClient.post(IOTAPI + IOTDEVICE, body, (err, req, res, data) => {
-              if (err) {
-                if (err.statusCode) {
-                  log.error(IOTCS,"Error creating device: " + err.statusCode);
-                }
-                n(err);
-                return;
-              }
-              if (!data.id) {
-                n(new Error("Unexpected data returned: " + JSON.stringify(data)));
-                return;
-              }
-              newDeviceId = data.id;
-              log.verbose(IOTCS, "Device created successfully. ID: %s", newDeviceId);
-              n(null);
-            });
-          },
-          function(n) {
-            // Download unregistered provisioning file
-            var body = {
-                passphrase: PASSWORD,
-                id: activationId
-            };
-            log.verbose(IOTCS, "Downloading provisioning data for device %s", newDeviceId);
-            iotClientStr.post(IOTAPI + IOTPROVISION, JSON.stringify(body), (err, req, res, data) => {
-              if (err) {
-                if (err.statusCode) {
-                  log.error(IOTCS,"Error downloading provisioning data: " + err.statusCode);
-                }
-                n(err);
-                return;
-              }
-              provisioningData = data;
-              log.verbose(IOTCS, "Provisioning data downloaded successfully");
-              n(null);
-            });
-          },
-          function(n) {
-            // Save provisioning data to file and create the link
-            storeFile = options.demozone.toUpperCase() + "_" + newDeviceId + ".conf";
-            fs.writeFileSync(storeFile, provisioningData);
-            fs.symlinkSync(storeFile, DEVICEFILE);
-            n(null);
-          }
-        ], function(err, results) {
-          if (err) {
-            log.error(PROCESS, err.message);
-            process.exit(2);
-          }
-          next(null);
-        });
-      });
-    }
+    // Retrieve XDK TRUCKS provisioning data
+    log.info(DB, "Retrieving XDK TRUCKS device provisioning data for demozone %s", options.demozone);
+    dbClient.get(DBURI + XDKTRUCKSDEVICEDATA.replace('{demozone}', options.demozone), (err, req, res, data) => {
+      if (err) {
+        log.error(DB,"Error from DB call: " + err.statusCode);
+        next(err);
+        return;
+      }
+      if (data.items.length === 0) {
+        next(new Error("No data found for demozone: " + options.demozone));
+        return;
+      }
+      xdkTrucks = data.items;
+      next();
+    });
   },
   function(next) {
-    // Start IoTCS dance
+    // Remove any existing "*.conf" file
+    glob('*.conf', (er, files) => {
+      _.forEach(files, (f) => {
+        fs.removeSync(f);
+      });
+      next();
+    });
+  },
+  function(next) {
+    // Create conf files based on data retrieved from DB and create as many XDK devices as needed
     dcl = require('./device-library.node');
     dcl = dcl({debug: false});
-    xdkDevice = new Device(XDK, log);
-    xdkDevice.setStoreFile(DEVICEFILE, PASSWORD);
-    xdkDevice.setUrn(urn);
-    devices.push(xdkDevice);
-    next(null);
+    async.eachSeries( xdkTrucks, (xdkTruck, nextXdk) => {
+      log.verbose(IOTCS, "Retrieving provisioning data for device '%s'", truck.truckid);
+
+      // We have the device ID and the provisioning data. Create the provisioning file
+      var file = xdkTruck.deviceid.toUpperCase() + '.conf';
+      fs.outputFileSync(file, xdkTruck.provisiondata);
+      // Create and init Device object and push it to the array
+      var xdkDevice = new Device(xdkTruck.deviceid.toUpperCase(), log);
+      device.setStoreFile(file, PASSWORD);
+      device.setUrn(urn);
+      devices.push(xdkDevice);
+      log.verbose(IOTCS, "Device successfully registered: %s", xdkTruck.deviceid.toUpperCase());
+      nextXdk();
+    }, (err) => {
+      next(err);
+    });
   },
   function(next) {
     log.info(IOTCS, "Initializing IoTCS devices");
@@ -738,9 +655,6 @@ async.series([
     xdkNodeUtils.on('discovered', () => {
       log.verbose(PROCESS,"XDK discovered, trying to connect...");
       xdkNodeUtils.connect()
-        .then(() => {
-//          xdkNodeUtils.sampling('start');
-        })
         .catch((err) => log.error(PROCESS, err));
     });
 
