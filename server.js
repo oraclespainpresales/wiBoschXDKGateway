@@ -139,7 +139,6 @@ var setupDemozone    = _.noop()
   , dcl              = _.noop()
   , Device           = require('./device')
   , xdkTrucks        = _.noop()
-  , xdkDevice        = _.noop()
   , storeFile        = _.noop()
 ;
 
@@ -189,6 +188,8 @@ var dbClient = restify.createJsonClient({
   }
 });
 
+var currentTruckId = _.noop();
+
 // Helpers BEGIN
 function IsJsonString(item) {
   item = typeof item !== "string"
@@ -203,7 +204,7 @@ function IsJsonString(item) {
 }
 
 function validate(payload) {
-  if (!payload.demozone || !payload.component || !payload.action) {
+  if (!payload.demozone || !payload.component || !payload.action || !payload.truckid) {
     log.verbose(KAFKA, "Ignoring invalid JSON");
     return false;
   }
@@ -260,7 +261,15 @@ function startKafka(cb) {
       return;
     }
 
-    xdkNodeUtils.sampling(payload.action).catch((err) => log.error(XDK, err));;
+    currentTruckId = XDK + payload.truckid.toUpperCase();
+
+    var xdkDevice = _.find(devices, (d) => { return d.getName === currentTruckId });
+    if (!xdkDevice) {
+      log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
+      return;
+    }
+
+    xdkNodeUtils.sampling(payload.action).catch((err) => log.error(XDK, err));
 
   });
 
@@ -581,6 +590,8 @@ async.series([
     // Initialize Queue system
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
+      // Get device based on currentTruckId
+      var xdkDevice = _.find(devices, (d) => { return d.getName === currentTruckId });
       var vd = xdkDevice.getIotVd(urn[0]);
       if (vd) {
         if (_.has(task.data, 'accelerometer')) {
