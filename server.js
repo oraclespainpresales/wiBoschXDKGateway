@@ -306,7 +306,7 @@ async.series([
     bledevices.shift();
     bledevices.pop();
     //bledevices.length should have the # of BLE devices available in the Pi
-    var BLE = _.noop()
+    var BLE_ = _.noop()
       , BUILTIN = _.noop()
     ;
     _.forEach(bledevices, (b) => {
@@ -315,12 +315,12 @@ async.series([
       // something like: [ 'hci1', 'B8:27:EB:D4:07:48' ]
       if (!s[1].toLowerCase().startsWith('b8')) {
         // Built-in Bluetooth mac address always starts with B8
-        BLE = parseInt(s[0].replace('hci',''));
+        BLE_ = parseInt(s[0].replace('hci',''));
       } else {
         BUILTIN = parseInt(s[0].replace('hci',''));
       }
     });
-    process.env.NOBLE_HCI_DEVICE_ID = (BLE !== undefined) ? BLE : BUILTIN;
+    process.env.NOBLE_HCI_DEVICE_ID = (BLE_ !== undefined) ? BLE_ : BUILTIN;
     log.info(BLE, "Using BLE device id: " + process.env.NOBLE_HCI_DEVICE_ID);
     next();
   },
@@ -482,8 +482,8 @@ async.series([
       fs.outputFileSync(file, xdkTruck.provisiondata);
       // Create and init Device object and push it to the array
       var xdkDevice = new Device(xdkTruck.deviceid.toUpperCase(), log);
-      device.setStoreFile(file, PASSWORD);
-      device.setUrn(urn);
+      xdkDevice.setStoreFile(file, PASSWORD);
+      xdkDevice.setUrn(urn);
       devices.push(xdkDevice);
       log.verbose(IOTCS, "Device successfully registered: %s", xdkTruck.deviceid.toUpperCase());
       nextXdk();
