@@ -24,14 +24,15 @@ const SAMPLINGRATE = 500
     , POWEREDOFF = 'poweredOff'
 ;
 
-var XDKID     = _.noop()
-  , XDK       = _.noop()
-  , MAINLOOP  = _.noop()
-  , BLESTATUS = POWEREDOFF
+var XDKID       = _.noop()
+  , XDK         = _.noop()
+  , MAINLOOP    = _.noop()
+  , BLESTATUS   = POWEREDOFF
   , SCANNING    = false
   , SCANTIMEOUT = _.noop()
   , SCANTIMER   = _.noop()
   , AUTOCONNECT = false
+  , SAMPLING    = false
 ;
 
 var self;
@@ -119,6 +120,7 @@ class XdkNodeUtils extends EventEmitter {
     super();
     EventEmitter.defaultMaxListeners = 20;
     self = this;
+    SAMPLING = false;
   }
 
   connect() {
@@ -202,32 +204,6 @@ class XdkNodeUtils extends EventEmitter {
             }
             XDK.ready = true;
             resolve();
-/**
-            // Start sampling
-            var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
-            if (w) {
-              log.verbose(BLE, "Request start sampling");
-
-              var b = new Buffer(1);
-              b.writeUInt8(0x01, 0);
-
-              w.c.write(b, false, function(err) {
-                if (err) {
-                  reject(err);
-                }
-              });
-            }
-            log.verbose(BLE, "Start Reading data");
-            MAINLOOP = setInterval(function() {
-              _.forEach(READERS, (r) => {
-                r.c.read(function(err) {
-                  if (err) {
-                    log.error(BLE, err);
-                  }
-                });
-              });
-            }, SAMPLINGRATE);
-**/
         }/**, (err) => {
             if (err) reject(err);
             resolve();
@@ -240,6 +216,7 @@ class XdkNodeUtils extends EventEmitter {
   sampling(mode) {
     return new Promise((resolve, reject) => {
       if (mode.toUpperCase() === "START") {
+        if (SAMPLING === true) reject("Sampling already ongoing");
         if (!XDK || !XDK.connect) reject("Cannot start sampling. XDK not discovered");
         if (!XDK.ready) reject("Cannot start sampling. XDK not ready");
 
@@ -255,6 +232,7 @@ class XdkNodeUtils extends EventEmitter {
             if (err) {
               reject(err);
             }
+            SAMPLING = true;
           });
         }
         log.verbose(BLE, "Start Reading data");
@@ -269,6 +247,7 @@ class XdkNodeUtils extends EventEmitter {
         }, SAMPLINGRATE);
         resolve();
       } else if (mode.toUpperCase() === "STOP") {
+        if (SAMPLING === true) reject("Sampling already stopped");
         if (!XDK || !XDK.connect) reject("Cannot stop sampling. XDK not discovered");
         if (!XDK.ready) reject("Cannot stop sampling. XDK not ready");
 
@@ -287,6 +266,7 @@ class XdkNodeUtils extends EventEmitter {
             if (err) {
               reject(err);
             }
+            SAMPLING = false;
           });
         }
         resolve();
