@@ -238,7 +238,7 @@ class XdkNodeUtils extends EventEmitter {
             SAMPLING = true;
           });
         }
-        log.verbose(BLE, "Start Reading data");
+        log.info(BLE, "Start Reading data");
         MAINLOOP = setInterval(function() {
           _.forEach(READERS, (r) => {
             r.c.read(function(err) {
@@ -257,7 +257,7 @@ class XdkNodeUtils extends EventEmitter {
         if (!XDK || !XDK.connect) reject("Cannot stop sampling. XDK not discovered");
         if (!XDK.ready) reject("Cannot stop sampling. XDK not ready");
 
-        log.verbose(BLE, "Stop Reading data");
+        log.info(BLE, "Stop Reading data");
         clearInterval(MAINLOOP);
 
         // Stop sampling
