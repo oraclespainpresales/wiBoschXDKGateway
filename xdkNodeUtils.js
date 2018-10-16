@@ -250,7 +250,7 @@ class XdkNodeUtils extends EventEmitter {
         }, SAMPLINGRATE);
         resolve();
       } else if (mode.toUpperCase() === "STOP") {
-        if (SAMPLING === true) {
+        if (SAMPLING === false) {
           reject("Sampling already stopped");
           return;
         }
