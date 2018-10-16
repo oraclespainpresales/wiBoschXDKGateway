@@ -216,7 +216,10 @@ class XdkNodeUtils extends EventEmitter {
   sampling(mode) {
     return new Promise((resolve, reject) => {
       if (mode.toUpperCase() === "START") {
-        if (SAMPLING === true) reject("Sampling already ongoing");
+        if (SAMPLING === true) {
+          reject("Sampling already ongoing");
+          return;
+        }
         if (!XDK || !XDK.connect) reject("Cannot start sampling. XDK not discovered");
         if (!XDK.ready) reject("Cannot start sampling. XDK not ready");
 
@@ -247,7 +250,10 @@ class XdkNodeUtils extends EventEmitter {
         }, SAMPLINGRATE);
         resolve();
       } else if (mode.toUpperCase() === "STOP") {
-        if (SAMPLING === true) reject("Sampling already stopped");
+        if (SAMPLING === true) {
+          reject("Sampling already stopped");
+          return;
+        }
         if (!XDK || !XDK.connect) reject("Cannot stop sampling. XDK not discovered");
         if (!XDK.ready) reject("Cannot stop sampling. XDK not ready");
 
@@ -310,7 +316,7 @@ noble.on('stateChange', function(state) {
 });
 
 var peripheralConnected = () => {
-  log.verbose(BLE, "XDK connected!");
+  log.info(BLE, "XDK connected");
 }
 
 var peripheralDisconnected = () => {
@@ -335,7 +341,7 @@ noble.on('discover', function(peripheral) {
   var id = peripheral.advertisement.serviceUuids;
 
   if (peripheral.id == XDKID) {
-    log.verbose(BLE, "XDK found (%s)", peripheral.advertisement.localName);
+    log.info(BLE, "XDK found (%s)", peripheral.advertisement.localName);
     noble.stopScanning();
     XDK = peripheral;
     XDK.ready = false;
