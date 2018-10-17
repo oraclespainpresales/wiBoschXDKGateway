@@ -309,6 +309,7 @@ async.series([
   },
   function(next) {
     // Try to identify and use the dongle BLE if exists
+    console.log("DEMOZONE: " + DEMOZONE)
     var bledevices = child_process.execSync('hcitool dev').toString().split('\n');
     bledevices.shift();
     bledevices.pop();
