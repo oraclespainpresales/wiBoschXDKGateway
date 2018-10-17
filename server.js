@@ -60,11 +60,12 @@ const DBHOST              = "https://apex.digitalpracticespain.com"
     , IOTPROVISION        = '/provisioner/device'
     , DEVICEFILE          = 'device.conf'
     , PASSWORD            = 'Welcome1'
+    , DEMOZONEFILE        = '/demozone.dat'
+    , DEFAULTDEMOZONE     = 'MADRID'
 ;
 
 // Initialize input arguments
 const optionDefinitions = [
-  { name: 'demozone', alias: 'd', type: String },
   { name: 'help', alias: 'h', type: Boolean },
   { name: 'verbose', alias: 'v', type: Boolean, defaultOption: false }
 ];
@@ -76,13 +77,6 @@ const sections = [
   {
     header: 'Options',
     optionList: [
-      {
-        name: 'demozone',
-        typeLabel: '{underline demozone}',
-        alias: 'd',
-        type: String,
-        description: 'Demozone'
-      },
       {
         name: 'verbose',
         alias: 'v',
@@ -124,6 +118,9 @@ process.on('SIGINT', function() {
   process.exit(2);
 });
 // Main handlers registration - END
+
+var DEMOZONE = _.noop()
+;
 
 // IoTCS stuff BEGIN
 var setupDemozone    = _.noop()
@@ -308,6 +305,11 @@ async.series([
     log.info(PROCESS, "%s - %s", PROCESSNAME, VERSION);
     log.info(PROCESS, "Author - %s", AUTHOR);
     next();
+  },
+  function(next) {
+    // Get demozone Data
+    DEMOZONE = DEFAULTDEMOZONE;
+    fs.readFile(DEMOZONEFILE,'utf8').then((data)=>{DEMOZONE=data.trim();log.info(PROCESS, 'Working for demozone: %s', DEMOZONE);}).catch(() => {});
   },
   function(next) {
     // Try to identify and use the dongle BLE if exists
