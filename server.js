@@ -91,10 +91,7 @@ const sections = [
   }
 ];
 const options = commandLineArgs(optionDefinitions);
-const valid =
-  options.help ||
-  (
-  );
+const valid = options.help;
 if (!valid) {
   console.log(getUsage(sections));
   process.exit(-1);
