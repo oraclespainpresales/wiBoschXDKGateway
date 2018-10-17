@@ -200,8 +200,8 @@ function validate(payload) {
     log.verbose(KAFKA, "Ignoring invalid JSON");
     return false;
   }
-  if ( payload.demozone !== options.demozone) {
-    log.verbose(KAFKA, "Ignoring action for other demozone (%s vs %s)", payload.demozone, options.demozone);
+  if ( payload.demozone !== DEMOZONE) {
+    log.verbose(KAFKA, "Ignoring action for other demozone (%s vs %s)", payload.demozone, DEMOZONE);
     return false;
   }
   if ( payload.component.toUpperCase() !== XDK) {
@@ -348,15 +348,15 @@ async.series([
   },
   function(next) {
     // Retrieve DEMOZONE settings from DB
-    log.info(DB, "Retrieving DEMOZONE settings for demozone %s", options.demozone);
-    dbClient.get(DBURI + DBDEMOZONE.replace('{demozone}', options.demozone), (err, req, res, data) => {
+    log.info(DB, "Retrieving DEMOZONE settings for demozone %s", DEMOZONE);
+    dbClient.get(DBURI + DBDEMOZONE.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
       if (err) {
         log.error(DB,"Error from DB call: " + err.statusCode);
         next(err);
         return;
       }
       if (data.items.length === 0) {
-        next(new Error("No data found for demozone: " + options.demozone));
+        next(new Error("No data found for demozone: " + DEMOZONE));
         return;
       }
       setupDemozone = data.items[0];
@@ -366,7 +366,7 @@ async.series([
   function(next) {
     if (!setupDemozone || !setupDemozone.setup || setupDemozone.setup.indexOf(XDK) == -1) {
       // Demozone doesn't have XDK setup. Simply abort!!
-      log.error(PROCESS, "Demozone '%s' doesn't have XDK enabled. Aborting!", options.demozone);
+      log.error(PROCESS, "Demozone '%s' doesn't have XDK enabled. Aborting!", DEMOZONE);
       log.info(PROCESS, "Exiting gracefully");
       process.removeAllListeners();
       process.exit(0);
@@ -376,10 +376,10 @@ async.series([
   },
   function(next) {
     // Retrieve IoTCS settings from DB
-    log.info(DB, "Retrieving IoTCS settings for demozone %s", options.demozone);
-    dbClient.get(DBURI + DBIOTCSSETUP.replace('{demozone}', options.demozone), (err, req, res, data) => {
+    log.info(DB, "Retrieving IoTCS settings for demozone %s", DEMOZONE);
+    dbClient.get(DBURI + DBIOTCSSETUP.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
       if (res.statusCode === 404) {
-        next(new Error("No data found for demozone: " + options.demozone));
+        next(new Error("No data found for demozone: " + DEMOZONE));
         return;
       }
       if (err) {
@@ -454,15 +454,15 @@ async.series([
   },
   function(next) {
     // Retrieve XDK TRUCKS provisioning data
-    log.info(DB, "Retrieving XDK TRUCKS device provisioning data for demozone %s", options.demozone);
-    dbClient.get(DBURI + XDKTRUCKSDEVICEDATA.replace('{demozone}', options.demozone), (err, req, res, data) => {
+    log.info(DB, "Retrieving XDK TRUCKS device provisioning data for demozone %s", DEMOZONE);
+    dbClient.get(DBURI + XDKTRUCKSDEVICEDATA.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
       if (err) {
         log.error(DB,"Error from DB call: " + err.statusCode);
         next(err);
         return;
       }
       if (data.items.length === 0) {
-        next(new Error("No data found for demozone: " + options.demozone));
+        next(new Error("No data found for demozone: " + DEMOZONE));
         return;
       }
       xdkTrucks = data.items;
@@ -570,14 +570,14 @@ async.series([
         deviceid: newDeviceId,
         data: provisioningData
       }
-      log.verbose(DB, "Upserting device data in DB for demozone %s", options.demozone);
-      dbClient.post(DBURI + DBDEVICEDATA + '/' + options.demozone, body, (err, req, res, data) => {
+      log.verbose(DB, "Upserting device data in DB for demozone %s", DEMOZONE);
+      dbClient.post(DBURI + DBDEVICEDATA + '/' + DEMOZONE, body, (err, req, res, data) => {
         if (err) {
           log.error(DB,"Error from DB call: " + err.statusCode);
           n(err);
           return;
         }
-        log.verbose(DB, "Device data in DB for demozone %s successfully upserted", options.demozone);
+        log.verbose(DB, "Device data in DB for demozone %s successfully upserted", DEMOZONE);
         next(null);
       });
     } else {
@@ -624,7 +624,7 @@ async.series([
           // If KAFKA is available, send event
           if (kafkaProducer) {
             var kafkaMessage = {
-              demozone: options.demozone,
+              demozone: DEMOZONE,
               eventname: XDK,
               payload: payload
             };
