@@ -200,7 +200,7 @@ function validate(payload) {
     log.verbose(KAFKA, "Ignoring invalid JSON");
     return false;
   }
-  if ( payload.demozone !== DEMOZONE) {
+  if ( payload.demozone.toUpperCase() !== DEMOZONE) {
     log.verbose(KAFKA, "Ignoring action for other demozone (%s vs %s)", payload.demozone, DEMOZONE);
     return false;
   }
