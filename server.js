@@ -94,7 +94,6 @@ const options = commandLineArgs(optionDefinitions);
 const valid =
   options.help ||
   (
-    options.demozone
   );
 if (!valid) {
   console.log(getUsage(sections));
