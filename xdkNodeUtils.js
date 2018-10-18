@@ -33,6 +33,7 @@ var XDKID       = _.noop()
   , SCANTIMER   = _.noop()
   , AUTOCONNECT = false
   , SAMPLING    = false
+  , TIMER       = {}
 ;
 
 var self;
@@ -213,7 +214,7 @@ class XdkNodeUtils extends EventEmitter {
     });
   }
 
-  sampling(mode) {
+  sampling(mode, timer) {
     return new Promise((resolve, reject) => {
       if (mode.toUpperCase() === "START") {
         if (SAMPLING === true) {
@@ -248,6 +249,25 @@ class XdkNodeUtils extends EventEmitter {
             });
           });
         }, SAMPLINGRATE);
+
+        if (timer) {
+          if (!isNan(timer)) {
+            timer = parseInt(timer) * 1000;
+            if (timer > 0) {
+              if (TIMER.timer) {
+                log.verbose(BLE, "Aborting previous Data pump timer");
+                clearTimeout(TIMER.timer);
+                TIMER = {};
+              }
+              log.info(BLE, "Data pump enabled for %d milliseconds", timer);
+              TIMER.time = timer;
+              TIMER.timer = setTimeout(() => {
+                self.sampling("stop");
+              }, TIMER.time);
+            }
+          }
+        }
+
         resolve();
       } else if (mode.toUpperCase() === "STOP") {
         if (SAMPLING === false) {
@@ -259,6 +279,11 @@ class XdkNodeUtils extends EventEmitter {
 
         log.info(BLE, "Stop Reading data");
         clearInterval(MAINLOOP);
+        if (TIMER.timer) {
+          clearTimeout(TIMER.timer);
+          log.verbose(BLE, "Data pump timeout cleared");
+          TIMER = {};
+        }
 
         // Stop sampling
         var w = _.find(WRITERS, { characteristic: XDK_CHARACTERISTIC_CONTROL_NODE_START_SAMPLING } );
