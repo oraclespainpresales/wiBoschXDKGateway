@@ -251,7 +251,7 @@ class XdkNodeUtils extends EventEmitter {
         }, SAMPLINGRATE);
 
         if (timer) {
-          if (!isNan(timer)) {
+          if (!isNaN(timer)) {
             timer = parseInt(timer) * 1000;
             if (timer > 0) {
               if (TIMER.timer) {
