@@ -262,6 +262,7 @@ class XdkNodeUtils extends EventEmitter {
               log.info(BLE, "Data pump enabled for %d milliseconds", timer);
               TIMER.time = timer;
               TIMER.timer = setTimeout(() => {
+                log.verbose(BLE, "Data pump timer reached!");
                 self.sampling("stop");
               }, TIMER.time);
             }
