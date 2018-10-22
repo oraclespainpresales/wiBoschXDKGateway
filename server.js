@@ -196,7 +196,7 @@ function IsJsonString(item) {
 }
 
 function validate(payload) {
-  if (!payload.demozone || !payload.component || !payload.action || !payload.truckid) {
+  if (!payload.demozone || !payload.component || !payload.action) {
     log.verbose(KAFKA, "Ignoring invalid JSON");
     return false;
   }
