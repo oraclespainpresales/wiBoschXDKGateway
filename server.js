@@ -304,8 +304,7 @@ async.series([
   function(next) {
     // Get demozone Data
     DEMOZONE = DEFAULTDEMOZONE;
-    fs.readFile(DEMOZONEFILE,'utf8').then((data)=>{DEMOZONE=data.trim();log.info(PROCESS, 'Working for demozone: %s', DEMOZONE);}).catch(() => {});
-    next();
+    fs.readFile(DEMOZONEFILE,'utf8').then((data)=>{DEMOZONE=data.trim();next();log.info(PROCESS, 'Working for demozone: %s', DEMOZONE);}).catch(() => {});
   },
   function(next) {
     // Try to identify and use the dongle BLE if exists
