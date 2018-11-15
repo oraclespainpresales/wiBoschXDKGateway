@@ -245,7 +245,7 @@ function startKafka(cb) {
   // CONSUMER
   log.verbose(KAFKA, "Starting consumer on topic: %s", kafkaSetup.actiontopic);
   kafkaConsumer = new Consumer(
-    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { autoCommit: true }
+    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 }, { topic: kafkaSetup.actiontopic, partition: 1 } ], { autoCommit: true }
   );
 
   kafkaConsumer.on('message', (data) => {
