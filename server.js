@@ -223,29 +223,24 @@ const ACTIONS = [ "START", "STOP" ];
 var kafkaSetup = {};
 
 function startKafka(cb) {
-//  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
-  kafkaClient = new kafka.KafkaClient({"kafkaHost": '129.150.84.231:6667'});
-/**
-//  kafkaClient.zk.client.on('connected', () => {
-  kafkaClient.client.on('connected', () => {
+  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
+  kafkaClient.zk.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
     log.verbose(KAFKA, "Server connected!");
   });
-//  kafkaClient.zk.client.on('disconnected', () => {
-  kafkaClient.client.on('disconnected', () => {
+  kafkaClient.zk.client.on('disconnected', () => {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
-//  kafkaClient.zk.client.on('expired', () => {
-  kafkaClient.client.on('expired', () => {
+  kafkaClient.zk.client.on('expired', () => {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
-**/
+
   // CONSUMER
-  log.verbose(KAFKA, "Starting consumer on topic: %s", kafkaSetup.actiontopic);
+  log.verbose(KAFKA, "Starting consumer on topic: %s and group id: %s", kafkaSetup.actiontopic, "WEDOINDUSTRY-" + DEMOZONE);
   kafkaConsumer = new Consumer(
-    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 }, { topic: kafkaSetup.actiontopic, partition: 1 } ], { autoCommit: true }
+    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { groupId: "WEDOINDUSTRY-" + DEMOZONE, autoCommit: true }
   );
 
   kafkaConsumer.on('message', (data) => {
