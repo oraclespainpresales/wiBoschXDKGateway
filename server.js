@@ -25,7 +25,8 @@ log.timestamp = true;
 //const XDKID = "09c2b4046299459b8475b237d200eac4"
 
 // In RPi (built-in BLE)
-const XDKID = "fcd6bd100551"
+//const XDKID = "fcd6bd100551"
+var XDKID = _.noop()
 //      XDKID = "fcd6bd1037b2"
 ;
 
@@ -372,7 +373,16 @@ async.series([
       process.removeAllListeners();
       process.exit(0);
     } else {
-      next();
+      if (!setupDemozone.xdkmac) {
+        // Demozone doesn't have XDK setup. Simply abort!!
+        log.error(PROCESS, "Demozone '%s' doesn't have XDK MAC setup. Aborting!", DEMOZONE);
+        log.info(PROCESS, "Exiting gracefully");
+        process.removeAllListeners();
+        process.exit(0);
+      } else {
+        XDKID = setupDemozone.xdkmac.toLowerCase();
+        next();
+      }
     }
   },
   function(next) {
@@ -403,8 +413,8 @@ async.series([
       }
       var jBody = JSON.parse(res.body);
       kafkaSetup.zookeeper   = jBody.zookeeperhost;
-      kafkaSetup.eventtopic  = jBody.eventtopic;
-      kafkaSetup.actiontopic = jBody.actiontopic;
+      kafkaSetup.eventtopic  = jBody.eventtopic.replace('{demozone}', DEMOZONE.toLowerCase());
+      kafkaSetup.actiontopic = jBody.actiontopic.replace('{demozone}', DEMOZONE.toLowerCase());
       next();
     });
   },
@@ -656,7 +666,7 @@ async.series([
     XdkNodeUtils = require('./xdkNodeUtils')
     xdkNodeUtils = new XdkNodeUtils();
     xdkNodeUtils.on('on', () => {
-      log.verbose(PROCESS,"BLE on, scanning for XDK device...");
+      log.verbose(PROCESS,"BLE on, scanning for XDK device with MAC address: '%s'...", XDKID);
       xdkNodeUtils.scan(XDKID)
         .catch((err) => log.error(PROCESS, err));
     });
