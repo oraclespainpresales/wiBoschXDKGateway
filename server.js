@@ -228,6 +228,45 @@ function startKafka(cb) {
   kafkaClient.zk.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
     log.verbose(KAFKA, "Server connected!");
+
+    // CONSUMER
+    log.verbose(KAFKA, "Starting consumer on topic: '%s'", kafkaSetup.actiontopic);
+    kafkaConsumer = new Consumer(
+      kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { autoCommit: true }
+    );
+
+    kafkaConsumer.on('message', (data) => {
+      log.verbose(KAFKA, "Incoming message on topic '%s', payload: %s", data.topic, data.value);
+      // Start validation
+      if (!IsJsonString(data.value)) {
+        log.verbose(KAFKA, "Ignoring invalid JSON string");
+        return;
+      }
+      var payload = JSON.parse(data.value);
+      if (!validate(payload)) {
+        return;
+      }
+
+      currentTruckId = XDK + payload.truckid.toUpperCase();
+
+      var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
+      if (!xdkDevice) {
+        log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
+        return;
+      }
+
+      xdkNodeUtils.sampling(payload.action, payload.timer).catch((err) => log.error(XDK, err));
+
+    });
+
+    kafkaConsumer.on('ready', () => {
+      log.verbose(KAFKA, "Consumer ready at topic '%s'", kafkaSetup.actiontopic);
+    });
+
+    kafkaConsumer.on('error', (err) => {
+      log.error(KAFKA, "Error initializing KAFKA consumer: " + err.message);
+    });
+
   });
   kafkaClient.zk.client.on('disconnected', () => {
     kafkaCnxStatus = DISCONNECTED;
@@ -236,44 +275,6 @@ function startKafka(cb) {
   kafkaClient.zk.client.on('expired', () => {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
-  });
-
-  // CONSUMER
-  log.verbose(KAFKA, "Starting consumer on topic: %s and group id: %s", kafkaSetup.actiontopic, "WEDOINDUSTRY-" + DEMOZONE);
-  kafkaConsumer = new Consumer(
-    kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { groupId: "WEDOINDUSTRY-" + DEMOZONE, autoCommit: true }
-  );
-
-  kafkaConsumer.on('message', (data) => {
-    log.verbose(KAFKA, "Incoming message on topic '%s', payload: %s", data.topic, data.value);
-    // Start validation
-    if (!IsJsonString(data.value)) {
-      log.verbose(KAFKA, "Ignoring invalid JSON string");
-      return;
-    }
-    var payload = JSON.parse(data.value);
-    if (!validate(payload)) {
-      return;
-    }
-
-    currentTruckId = XDK + payload.truckid.toUpperCase();
-
-    var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
-    if (!xdkDevice) {
-      log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
-      return;
-    }
-
-    xdkNodeUtils.sampling(payload.action, payload.timer).catch((err) => log.error(XDK, err));
-
-  });
-
-  kafkaConsumer.on('ready', () => {
-    log.verbose(KAFKA, "Consumer ready at topic '%s'", kafkaSetup.actiontopic);
-  });
-
-  kafkaConsumer.on('error', (err) => {
-    log.error(KAFKA, "Error initializing KAFKA consumer: " + err.message);
   });
 
   // PRODUCER
