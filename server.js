@@ -225,6 +225,7 @@ var kafkaSetup = {};
 function startKafka(cb) {
 //  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
   kafkaClient = new kafka.KafkaClient({"kafkaHost": '129.150.84.231:6667'});
+/**
 //  kafkaClient.zk.client.on('connected', () => {
   kafkaClient.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
@@ -240,7 +241,7 @@ function startKafka(cb) {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
-
+**/
   // CONSUMER
   log.verbose(KAFKA, "Starting consumer on topic: %s", kafkaSetup.actiontopic);
   kafkaConsumer = new Consumer(
