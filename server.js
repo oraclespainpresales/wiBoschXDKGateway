@@ -26,6 +26,7 @@ log.timestamp = true;
 
 // In RPi (built-in BLE)
 const XDKID = "fcd6bd100551"
+//      XDKID = "fcd6bd1037b2"
 ;
 
 const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
@@ -237,6 +238,7 @@ function startKafka(cb) {
   });
 
   // CONSUMER
+  log.verbose(KAFKA, "Starting consumer on topic: %s", kafkaSetup.actiontopic);
   kafkaConsumer = new Consumer(
     kafkaClient, [ { topic: kafkaSetup.actiontopic, partition: 0 } ], { autoCommit: true }
   );
