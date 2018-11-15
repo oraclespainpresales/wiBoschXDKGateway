@@ -225,15 +225,18 @@ var kafkaSetup = {};
 function startKafka(cb) {
 //  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
   kafkaClient = new kafka.KafkaClient({"kafkaHost": '129.150.84.231:6667'});
-  kafkaClient.zk.client.on('connected', () => {
+//  kafkaClient.zk.client.on('connected', () => {
+  kafkaClient.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
     log.verbose(KAFKA, "Server connected!");
   });
-  kafkaClient.zk.client.on('disconnected', () => {
+//  kafkaClient.zk.client.on('disconnected', () => {
+  kafkaClient.client.on('disconnected', () => {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
-  kafkaClient.zk.client.on('expired', () => {
+//  kafkaClient.zk.client.on('expired', () => {
+  kafkaClient.client.on('expired', () => {
     kafkaCnxStatus = DISCONNECTED;
     log.verbose(KAFKA, "Server disconnected!");
   });
