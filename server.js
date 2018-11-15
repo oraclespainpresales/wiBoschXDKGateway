@@ -223,7 +223,8 @@ const ACTIONS = [ "START", "STOP" ];
 var kafkaSetup = {};
 
 function startKafka(cb) {
-  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
+//  kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
+  kafkaClient = new kafka.Client({"kafkaHost": '129.150.84.231:6667'});
   kafkaClient.zk.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
     log.verbose(KAFKA, "Server connected!");
