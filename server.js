@@ -246,8 +246,9 @@ function startKafka(cb) {
       if (!validate(payload)) {
         return;
       }
-
-      currentTruckId = XDK + payload.truckid.toUpperCase();
+      if (payload.truckid) {
+        currentTruckId = XDK + payload.truckid.toUpperCase();
+      }
 
       var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
       if (!xdkDevice) {
