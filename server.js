@@ -13,6 +13,7 @@ const async = require('async')
     , child_process = require('child_process')
     , commandLineArgs = require('command-line-args')
     , getUsage = require('command-line-usage')
+    , uuidv4 = require('uuid/v4')
 ;
 
 var XdkNodeUtils = _.noop()
@@ -45,7 +46,9 @@ const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
     , XDK     = "XDK"
 ;
 
-const DBHOST              = "https://apex.digitalpracticespain.com"
+const
+//      DBHOST              = "https://apex.wedoteam.io"
+      DBHOST              = "https://apex.digitalpracticespain.com"
     , DBURI               = '/ords/pdb1/wedoindustry'
     , DBDEMOZONE          = '/setup/demozone/{demozone}'
     , DBIOTCSSETUP        = '/setup/iot/{demozone}/am'
@@ -63,6 +66,7 @@ const DBHOST              = "https://apex.digitalpracticespain.com"
     , DEVICEFILE          = 'device.conf'
     , PASSWORD            = 'Welcome1'
     , DEMOZONEFILE        = '/demozone.dat'
+    , CONSUMERGROUPFILEID = '/tmp/kafka-consumergroup.id'
     , DEFAULTDEMOZONE     = 'MADRID'
 ;
 
@@ -223,12 +227,78 @@ function validate(payload) {
 const ACTIONS = [ "START", "STOP" ];
 var kafkaSetup = {};
 
+function getUuid() {
+  var uuid;
+  try {
+    uuid = fs.readFileSync(CONSUMERGROUPFILEID, { encoding: 'utf8' });
+  } catch (e) {
+    uuid = uuidv4();
+    fs.writeFileSync(CONSUMERGROUPFILEID, uuid);
+  }
+  return uuid;
+}
+
 function startKafka(cb) {
+
+  var options = {
+    host: kafkaSetup.zookeeper,
+    groupId: getUuid(),
+    sessionTimeout: 15000
+  };
+
+  log.verbose(KAFKA, "Starting consumer group with id: '%s' on topic: '%s' in zookeper host: '%s'", options.groupId, kafkaSetup.actiontopic, options.host);
+
+  kafkaConsumer = new kafka.ConsumerGroup(options, kafkaSetup.actiontopic);
+
+  kafkaConsumer.on('connect', () => {
+    log.verbose(KAFKA, "Consumer group connected. Member id: '%s'", kafkaConsumer.memberId);
+  });
+
+  kafkaConsumer.on('message', (data) => {
+    log.verbose(KAFKA, "Incoming message on topic '%s', payload: %s", data.topic, data.value);
+    // Start validation
+    if (!IsJsonString(data.value)) {
+      log.verbose(KAFKA, "Ignoring invalid JSON string");
+      return;
+    }
+    var payload = JSON.parse(data.value);
+    if (!validate(payload)) {
+      return;
+    }
+    if (payload.truckid) {
+      currentTruckId = XDK + payload.truckid.toUpperCase();
+    }
+
+    var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
+    if (!xdkDevice) {
+      log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
+      return;
+    }
+
+    xdkNodeUtils.sampling(payload.action, payload.timer).catch((err) => log.error(XDK, err));
+
+  });
+
+  kafkaConsumer.on('ready', () => {
+    log.verbose(KAFKA, "Consumer ready at topic '%s'", kafkaSetup.actiontopic);
+  });
+
+  kafkaConsumer.on('error', (err) => {
+    log.error(KAFKA, "Error initializing KAFKA consumer: " + err.message);
+  });
+
+  kafkaConsumer.on('disconnected', () => {
+    kafkaCnxStatus = DISCONNECTED;
+    log.verbose(KAFKA, "Consumer disconnected!");
+  });
+
   kafkaClient = new kafka.Client(kafkaSetup.zookeeper, "RETAIL", {sessionTimeout: 1000});
   kafkaClient.zk.client.on('connected', () => {
     kafkaCnxStatus = CONNECTED;
-    log.verbose(KAFKA, "Server connected!");
+    log.verbose(KAFKA, "Client connected!");
+  });
 
+/**
     // CONSUMER
     log.verbose(KAFKA, "Starting consumer on topic: '%s'", kafkaSetup.actiontopic);
     kafkaConsumer = new Consumer(
@@ -269,15 +339,15 @@ function startKafka(cb) {
     });
 
   });
+**/
   kafkaClient.zk.client.on('disconnected', () => {
     kafkaCnxStatus = DISCONNECTED;
-    log.verbose(KAFKA, "Server disconnected!");
+    log.verbose(KAFKA, "Client disconnected!");
   });
   kafkaClient.zk.client.on('expired', () => {
     kafkaCnxStatus = DISCONNECTED;
-    log.verbose(KAFKA, "Server disconnected!");
+    log.verbose(KAFKA, "Client disconnected!");
   });
-
   // PRODUCER
   kafkaProducer = new Producer(kafkaClient);
   kafkaProducer.on('ready', () => {
@@ -313,25 +383,29 @@ async.series([
   },
   function(next) {
     // Try to identify and use the dongle BLE if exists
-    var bledevices = child_process.execSync('hcitool dev').toString().split('\n');
-    bledevices.shift();
-    bledevices.pop();
-    //bledevices.length should have the # of BLE devices available in the Pi
-    var BLE_ = _.noop()
-      , BUILTIN = _.noop()
-    ;
-    _.forEach(bledevices, (b) => {
-      var s = b.split('\t');
-      s.shift();
-      // something like: [ 'hci1', 'B8:27:EB:D4:07:48' ]
-      if (!s[1].toLowerCase().startsWith('b8')) {
-        // Built-in Bluetooth mac address always starts with B8
-        BLE_ = parseInt(s[0].replace('hci',''));
-      } else {
-        BUILTIN = parseInt(s[0].replace('hci',''));
-      }
-    });
-    process.env.NOBLE_HCI_DEVICE_ID = (BLE_ !== undefined) ? BLE_ : BUILTIN;
+    try {
+      var bledevices = child_process.execSync('hcitool dev').toString().split('\n');
+      bledevices.shift();
+      bledevices.pop();
+      //bledevices.length should have the # of BLE devices available in the Pi
+      var BLE_ = _.noop()
+        , BUILTIN = _.noop()
+      ;
+      _.forEach(bledevices, (b) => {
+        var s = b.split('\t');
+        s.shift();
+        // something like: [ 'hci1', 'B8:27:EB:D4:07:48' ]
+        if (!s[1].toLowerCase().startsWith('b8')) {
+          // Built-in Bluetooth mac address always starts with B8
+          BLE_ = parseInt(s[0].replace('hci',''));
+        } else {
+          BUILTIN = parseInt(s[0].replace('hci',''));
+        }
+      });
+      process.env.NOBLE_HCI_DEVICE_ID = (BLE_ !== undefined) ? BLE_ : BUILTIN;
+    } catch(e) {
+      process.env.NOBLE_HCI_DEVICE_ID = 0;
+    }
     log.info(BLE, "Using BLE device id: " + process.env.NOBLE_HCI_DEVICE_ID);
     next();
   },
@@ -661,12 +735,12 @@ async.series([
   },
   function(next) {
     // Start Kafka client
-    log.verbose(KAFKA, "Connecting to Zookeper host at %s...", kafkaSetup.zookeeper);
+//    log.verbose(KAFKA, "Connecting to Zookeper host at %s...", kafkaSetup.zookeeper);
     startKafka(next);
   },
   function(next) {
     XdkNodeUtils = require('./xdkNodeUtils')
-    xdkNodeUtils = new XdkNodeUtils();
+    xdkNodeUtils = new XdkNodeUtils(log.level);
     xdkNodeUtils.on('on', () => {
       log.verbose(PROCESS,"BLE on, scanning for XDK device with MAC address: '%s'...", XDKID);
       xdkNodeUtils.scan(XDKID)

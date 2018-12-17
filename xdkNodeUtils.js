@@ -7,7 +7,6 @@ const async = require('async')
 ;
 
 log.timestamp = true;
-log.level     = 'verbose';
 
 const BLE = "BLE"
 ;
@@ -117,10 +116,11 @@ var READERS = [ { characteristic: READER1, parser: accelParser },
 
 class XdkNodeUtils extends EventEmitter {
 
-  constructor() {
+  constructor(level) {
     super();
     EventEmitter.defaultMaxListeners = 20;
     self = this;
+    log.level = level;
     SAMPLING = false;
   }
 
