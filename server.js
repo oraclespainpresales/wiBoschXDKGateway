@@ -48,7 +48,7 @@ const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
 
 const
 //      DBHOST              = "https://apex.wedoteam.io"
-      DBHOST              = "https://apex.digitalpracticespain.com"
+      DBHOST              = "https://apex.wedoteam.io"
     , DBURI               = '/ords/pdb1/wedoindustry'
     , DBDEMOZONE          = '/setup/demozone/{demozone}'
     , DBIOTCSSETUP        = '/setup/iot/{demozone}/am'
