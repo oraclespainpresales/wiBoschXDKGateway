@@ -299,10 +299,7 @@ function startKafka(cb) {
 
     var xdkDevice = _.noop();
     if (useMQTT) {
-      console.log(xdkDevices);
-      console.log(XDK + currentTruckId);
-      xdkDevice = _.find(xdkDevices, { name: XDK + currentTruckId });
-      console.log(xdkDevice);
+      xdkDevice = _.find(xdkDevices, { name: currentTruckId });
     } else {
       xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
     }
@@ -865,7 +862,7 @@ async.series([
         } else {
           // Send through MQTT
           // currentTruckId contains MADX52
-          let d = _.find(xdkDevices, { name: XDK + currentTruckId });
+          let d = _.find(xdkDevices, { name: currentTruckId });
           if (!d) {
             log.error(MQTT, "Current truck with id '%s' not found in MQTT settings!", currentTruckId);
           } else {
