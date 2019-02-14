@@ -866,7 +866,7 @@ async.series([
           if (!d) {
             log.error(MQTT, "Current truck with id '%s' not found in MQTT settings!", currentTruckId);
           } else {
-            let mqttTopic =   d.mqtttopic + '/' + deviceid;
+            let mqttTopic =   d.mqtttopic + '/' + d.deviceid;
             let body = {
               type: "data",
               urn: d.urn,
