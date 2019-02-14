@@ -87,7 +87,7 @@ if (useMQTT) {
   var mqtt       = require('mqtt')
     , mqttClient = _.noop()
     , mqttTopic  = _.noop()
-    , xdkDevices = [];
+    , xdkDevices = []
     , MQTTBROKER
     , MQTTUSERNAME
     , MQTTPASSWORD
