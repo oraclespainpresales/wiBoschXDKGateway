@@ -300,6 +300,7 @@ function startKafka(cb) {
     var xdkDevice = _.noop();
     if (useMQTT) {
       console.log(xdkDevices);
+      console.log(XDK + currentTruckId);
       xdkDevice = _.find(xdkDevices, { name: XDK + currentTruckId });
       console.log(xdkDevice);
     } else {
