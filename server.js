@@ -34,14 +34,16 @@ var XDKID = _.noop()
 const PROCESSNAME = "WEDO Industry - Bosch XDK Gateway"
     , VERSION = "v1.0"
     , AUTHOR  = "Carlos Casares <carlos.casares@oracle.com>"
+    , DEMO    = 'WEDOINDUSTRY'
     , PROCESS = 'PROCESS'
     , BLE     = "BLE"
-    , IOTCS   = 'IOTCS'
+    , IOTCS   = "IOTCS"
     , REST    = "REST"
     , QUEUE   = "QUEUE"
     , DATA    = "DATA"
     , DB      = "DB"
     , KAFKA   = "KAFKA"
+    , MQTT    = "MQTT"
     , ALERT   = "ALERT"
     , XDK     = "XDK"
 ;
@@ -50,10 +52,13 @@ const
 //      DBHOST              = "https://apex.wedoteam.io"
       DBHOST              = "https://apex.wedoteam.io"
     , DBURI               = '/ords/pdb1/wedoindustry'
+    , COMMONURI           = '/ords/pdb1/wedo/common'
     , DBDEMOZONE          = '/setup/demozone/{demozone}'
     , DBIOTCSSETUP        = '/setup/iot/{demozone}/am'
     , EVENTHUBSETUP       = '/setup/eventhub'
     , DBDEVICEDATA        = '/device'
+    , MQTTSETUPURI        = "/setup/mqtt"
+    , DEVICESETUPURI      = "/devices/{demo}/{demozone}"
     , XDKTRUCKSDEVICEDATA = '/iot/xdk/{demozone}'
     , TIMEOUT             = 2000
     , EVENT               = 'XDK'
@@ -69,6 +74,28 @@ const
     , CONSUMERGROUPFILEID = '/tmp/kafka-consumergroup.id'
     , DEFAULTDEMOZONE     = 'MADRID'
 ;
+
+// MQTT related stuff
+const ENABLEMQTTFILE = '/tmp/USEMQTT'
+;
+
+var useMQTT = fs.existsSync(ENABLEMQTTFILE);
+
+log.info(MQTT, "MQTT enabled mode: " + useMQTT);
+
+if (useMQTT) {
+  var mqtt       = require('mqtt')
+    , mqttClient = _.noop()
+    , mqttTopic  = _.noop()
+    , MQTTBROKER
+    , MQTTUSERNAME
+    , MQTTPASSWORD
+    , MQTTRECONNECTPERIOD
+    , MQTTCONNECTTIMEOUT
+  ;
+}
+
+// MQTT stuff end
 
 // Initialize input arguments
 const optionDefinitions = [
@@ -462,24 +489,115 @@ async.series([
     }
   },
   function(next) {
-    // Retrieve IoTCS settings from DB
-    log.info(DB, "Retrieving IoTCS settings for demozone %s", DEMOZONE);
-    dbClient.get(DBURI + DBIOTCSSETUP.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
-      if (res.statusCode === 404) {
-        next(new Error("No data found for demozone: " + DEMOZONE));
-        return;
-      }
-      if (err) {
-        log.error(DB,"Error from DB call: " + err.statusCode);
-        next(err);
-        return;
-      }
-      iotsettings = _.clone(data);
-      log.verbose(DB, "IoTCS settings:");
-      log.verbose(DB, "Hostname:    %s", iotsettings.url);
-      log.verbose(DB, "Credentials: %s / %s", iotsettings.username, iotsettings.password);
-      next(null);
-    });
+    if (!useMQTT) {
+      // Retrieve IoTCS settings from DB
+      log.info(DB, "Retrieving IoTCS settings for demozone %s", DEMOZONE);
+      dbClient.get(DBURI + DBIOTCSSETUP.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
+        if (res.statusCode === 404) {
+          next(new Error("No data found for demozone: " + DEMOZONE));
+          return;
+        }
+        if (err) {
+          log.error(DB,"Error from DB call: " + err.statusCode);
+          next(err);
+          return;
+        }
+        iotsettings = _.clone(data);
+        log.verbose(DB, "IoTCS settings:");
+        log.verbose(DB, "Hostname:    %s", iotsettings.url);
+        log.verbose(DB, "Credentials: %s / %s", iotsettings.username, iotsettings.password);
+        next();
+      });
+    } else {
+      // Retrieve MQTT settings from DB
+      log.info(DB, "Retrieving MQTT settings");
+      dbClient.get(COMMONURI + MQTTSETUPURI, (err, req, res, data) => {
+        if (res.statusCode === 404) {
+          next(new Error("No data found!!!"));
+          return;
+        }
+        if (err) {
+          log.error(DB,"Error from DB call: " + err.statusCode);
+          next(err);
+          return;
+        }
+        MQTTBROKER = data.broker;
+        MQTTUSERNAME = data.username;
+        MQTTPASSWORD = data.password;
+        MQTTRECONNECTPERIOD = data.reconnectperiod;
+        MQTTCONNECTTIMEOUT = data.connecttimeout;
+        next();
+      });
+    }
+  },
+  function(next) {
+    if (useMQTT) {
+      log.info(MQTT, "Retrieving device settings for demo '%s' and demozone '%s'", DEMO, DEMOZONE);
+        dbClient.get(COMMONURI + DEVICESETUPURI.replace('{demo}', DEMO).replace('{demozone}', DEMOZONE), (err, req, res, data) => {
+        if (res.statusCode === 404) {
+          next(new Error("No data found!!!"));
+          return;
+        }
+        if (err) {
+          log.error(DB,"Error from DB call: " + err.statusCode);
+          next(err);
+          return;
+        }
+        var xdkDevices = [];
+        _.forEach(data.items, (d) => {
+          if (d.devicename.startsWith('XDK')) {
+            xdkDevices.push({
+              name: d.devicename,
+              deviceid: d.deviceid,
+              urn: JSON.parse(d.urns)[0],
+              mqtttopic: d.mqtttopic
+            });
+          }
+        });
+        if (xdkDevices.length == 0) {
+          next(new Error("No data found!!!"));
+          return;
+        }
+        next();
+      });
+    } else {
+      next();
+    }
+  },
+  function(next) {
+    if (useMQTT) {
+      // Initialize mqtt
+      log.info(MQTT, "Connecting to MQTT broker at %s", MQTTBROKER);
+      mqttClient  = mqtt.connect(MQTTBROKER, { username: MQTTUSERNAME, password: MQTTPASSWORD, reconnectPeriod: MQTTRECONNECTPERIOD, connectTimeout: MQTTCONNECTTIMEOUT });
+      mqttClient.connected = false;
+
+      // Common event handlers
+      mqttClient.on('connect', () => {
+        log.info(MQTT, "Successfully connected to MQTT broker at %s", MQTTBROKER);
+        mqttClient.connected = true;
+      });
+
+      mqttClient.on('error', err => {
+        log.error(MQTT, "Error: ", err);
+      });
+
+      mqttClient.on('reconnect', () => {
+        log.verbose(MQTT, "Client trying to reconnect...");
+      });
+
+      mqttClient.on('offline', () => {
+        mqttClient.connected = false;
+        log.warn(MQTT, "Client went offline!");
+      });
+
+      mqttClient.on('end', () => {
+        mqttClient.connected = false;
+        log.info(MQTT, "Client ended");
+      });
+      next();
+    } else {
+      next();
+    }
   },
   function(next) {
     log.verbose(PROCESS, "Retrieving EventHub setup");
@@ -495,180 +613,204 @@ async.series([
     });
   },
   function(next) {
-    // "Ping" IoTCS by calling the "Get Devices Count" simple API
-    iotClient = restify.createJsonClient({
-      url: iotsettings.url,
-      contentType: 'application/json',
-      accept: 'application/json',
-      connectTimeout: TIMEOUT,
-      requestTimeout: TIMEOUT,
-      retry: {
-        'retries': 0
-      },
-      rejectUnauthorized: false
-    });
-    iotClient.basicAuth(iotsettings.username, iotsettings.password);
-    // Create an String one to download the provisioning file
-    iotClientStr = restify.createStringClient({
-      url: iotsettings.url,
-      contentType: 'application/json',
-      accept: 'text/plain',
-      connectTimeout: TIMEOUT,
-      requestTimeout: TIMEOUT,
-      retry: {
-        'retries': 0
-      },
-      rejectUnauthorized: false
-    });
-    iotClientStr.basicAuth(iotsettings.username, iotsettings.password);
+    if (!useMQTT) {
+      // "Ping" IoTCS by calling the "Get Devices Count" simple API
+      iotClient = restify.createJsonClient({
+        url: iotsettings.url,
+        contentType: 'application/json',
+        accept: 'application/json',
+        connectTimeout: TIMEOUT,
+        requestTimeout: TIMEOUT,
+        retry: {
+          'retries': 0
+        },
+        rejectUnauthorized: false
+      });
+      iotClient.basicAuth(iotsettings.username, iotsettings.password);
+      // Create an String one to download the provisioning file
+      iotClientStr = restify.createStringClient({
+        url: iotsettings.url,
+        contentType: 'application/json',
+        accept: 'text/plain',
+        connectTimeout: TIMEOUT,
+        requestTimeout: TIMEOUT,
+        retry: {
+          'retries': 0
+        },
+        rejectUnauthorized: false
+      });
+      iotClientStr.basicAuth(iotsettings.username, iotsettings.password);
 
-    log.info(IOTCS, "Pinging IoTCS instance at %s...", iotsettings.url)
-    iotClient.get(IOTAPI + IOTGETDEVICESCOUNT, (err, req, res, data) => {
-      if (err) {
-        if (err.statusCode) {
-          log.error(IOTCS,"Error pinging IoTCS instance: " + err.statusCode);
-        }
-        next(err);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        next(new Error("Unexpected HTTP return code when pinging IoTCS instance: " + res.statusCode));
-        return;
-      }
-      log.info(IOTCS, "IoTCS instance at %s successfully ping'ed", iotsettings.url)
-      next(null);
-    });
-  },
-  function(next) {
-    // Retrieve XDK TRUCKS provisioning data
-    log.info(DB, "Retrieving XDK TRUCKS device provisioning data for demozone %s", DEMOZONE);
-    dbClient.get(DBURI + XDKTRUCKSDEVICEDATA.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
-      if (err) {
-        log.error(DB,"Error from DB call: " + err.statusCode);
-        next(err);
-        return;
-      }
-      if (data.items.length === 0) {
-        next(new Error("No data found for demozone: " + DEMOZONE));
-        return;
-      }
-      xdkTrucks = data.items;
-      next();
-    });
-  },
-  function(next) {
-    // Remove any existing "*.conf" file
-    glob('*.conf', (er, files) => {
-      _.forEach(files, (f) => {
-        fs.removeSync(f);
-      });
-      next();
-    });
-  },
-  function(next) {
-    // Create conf files based on data retrieved from DB and create as many XDK devices as needed
-    dcl = require('./device-library.node');
-    dcl = dcl({debug: false});
-    async.eachSeries( xdkTrucks, (xdkTruck, nextXdk) => {
-      log.verbose(IOTCS, "Retrieving provisioning data for device '%s'", xdkTruck.deviceid);
-      // We have the device ID and the provisioning data. Create the provisioning file
-      var file = xdkTruck.deviceid.toUpperCase() + '.conf';
-      fs.outputFileSync(file, xdkTruck.provisiondata);
-      // Create and init Device object and push it to the array
-      var xdkDevice = new Device(xdkTruck.deviceid.toUpperCase(), log);
-      xdkDevice.setStoreFile(file, PASSWORD);
-      xdkDevice.setUrn(urn);
-      devices.push(xdkDevice);
-      log.verbose(IOTCS, "Device successfully registered: %s", xdkTruck.deviceid.toUpperCase());
-      nextXdk();
-    }, (err) => {
-      next(err);
-    });
-  },
-  function(next) {
-    log.info(IOTCS, "Initializing IoTCS devices");
-    log.info(IOTCS, "Using IoTCS JavaScript Libraries v" + dcl.version);
-    async.eachSeries( devices, function(d, callbackEachSeries) {
-      async.series( [
-        function(callbackSeries) {
-          // Initialize Device
-          log.info(IOTCS, "Initializing IoT device '" + d.getName() + "'");
-          d.setIotDcd(new dcl.device.DirectlyConnectedDevice(d.getIotStoreFile(), d.getIotStorePassword()));
-          callbackSeries(null);
-        },
-        function(callbackSeries) {
-          // Check if already activated. If not, activate it
-          if (!d.getIotDcd().isActivated()) {
-            log.verbose(IOTCS, "Activating IoT device '" + d.getName() + "'");
-            d.getIotDcd().activate(d.getUrn(), function (device, error) {
-              if (error) {
-                log.error(IOTCS, "Error in activating '" + d.getName() + "' device (" + d.getUrn() + "). Error: " + error.message);
-                callbackSeries(error);
-              }
-              d.setIotDcd(device);
-              if (!d.getIotDcd().isActivated()) {
-                log.error(IOTCS, "Device '" + d.getName() + "' successfully activated, but not marked as Active (?). Aborting.");
-                callbackSeries("ERROR: Successfully activated but not marked as Active");
-              }
-              callbackSeries(null);
-            });
-          } else {
-            log.verbose(IOTCS, "'" + d.getName() + "' device is already activated");
-            callbackSeries(null);
-          }
-        },
-        function(callbackSeries) {
-          // When here, the device should be activated. Get device models, one per URN registered
-          async.eachSeries(d.getUrn(), function(urn, callbackEachSeriesUrn) {
-            getModel(d.getIotDcd(), urn, (function (error, model) {
-              if (error !== null) {
-                log.error(IOTCS, "Error in retrieving '" + urn + "' model. Error: " + error.message);
-                callbackEachSeriesUrn(error);
-              } else {
-                d.setIotVd(urn, model, d.getIotDcd().createVirtualDevice(d.getIotDcd().getEndpointId(), model));
-                log.verbose(IOTCS, "'" + urn + "' intialized successfully");
-              }
-              callbackEachSeriesUrn(null);
-            }).bind(this));
-          }, function(err) {
-            if (err) {
-              callbackSeries(err);
-            } else {
-              callbackSeries(null, true);
-            }
-          });
-        }
-      ], function(err, results) {
-        callbackEachSeries(err);
-      });
-    }, function(err) {
-      if (err) {
-        next(err);
-      } else {
-        log.info(IOTCS, "IoTCS device initialized successfully");
-        next(null);
-      }
-    });
-  },
-  function(next) {
-    // If new device, get updated provisioning file contents and update DB
-    if (isNewDevice) {
-      var body = {
-        deviceid: newDeviceId,
-        data: provisioningData
-      }
-      log.verbose(DB, "Upserting device data in DB for demozone %s", DEMOZONE);
-      dbClient.post(DBURI + DBDEVICEDATA + '/' + DEMOZONE, body, (err, req, res, data) => {
+      log.info(IOTCS, "Pinging IoTCS instance at %s...", iotsettings.url)
+      iotClient.get(IOTAPI + IOTGETDEVICESCOUNT, (err, req, res, data) => {
         if (err) {
-          log.error(DB,"Error from DB call: " + err.statusCode);
-          n(err);
+          if (err.statusCode) {
+            log.error(IOTCS,"Error pinging IoTCS instance: " + err.statusCode);
+          }
+          next(err);
           return;
         }
-        log.verbose(DB, "Device data in DB for demozone %s successfully upserted", DEMOZONE);
-        next(null);
+        if (res.statusCode !== 200) {
+          next(new Error("Unexpected HTTP return code when pinging IoTCS instance: " + res.statusCode));
+          return;
+        }
+        log.info(IOTCS, "IoTCS instance at %s successfully ping'ed", iotsettings.url)
+        next();
       });
     } else {
-      next(null);
+      next();
+    }
+  },
+  function(next) {
+    if (!useMQTT) {
+      // Retrieve XDK TRUCKS provisioning data
+      log.info(DB, "Retrieving XDK TRUCKS device provisioning data for demozone %s", DEMOZONE);
+      dbClient.get(DBURI + XDKTRUCKSDEVICEDATA.replace('{demozone}', DEMOZONE), (err, req, res, data) => {
+        if (err) {
+          log.error(DB,"Error from DB call: " + err.statusCode);
+          next(err);
+          return;
+        }
+        if (data.items.length === 0) {
+          next(new Error("No data found for demozone: " + DEMOZONE));
+          return;
+        }
+        xdkTrucks = data.items;
+        next();
+      });
+    } else {
+      next();
+    }
+  },
+  function(next) {
+    if (!useMQTT) {
+      // Remove any existing "*.conf" file
+      glob('*.conf', (er, files) => {
+        _.forEach(files, (f) => {
+          fs.removeSync(f);
+        });
+        next();
+      });
+    } else {
+      next();
+    }
+  },
+  function(next) {
+    if (!useMQTT) {
+      // Create conf files based on data retrieved from DB and create as many XDK devices as needed
+      dcl = require('./device-library.node');
+      dcl = dcl({debug: false});
+      async.eachSeries( xdkTrucks, (xdkTruck, nextXdk) => {
+        log.verbose(IOTCS, "Retrieving provisioning data for device '%s'", xdkTruck.deviceid);
+        // We have the device ID and the provisioning data. Create the provisioning file
+        var file = xdkTruck.deviceid.toUpperCase() + '.conf';
+        fs.outputFileSync(file, xdkTruck.provisiondata);
+        // Create and init Device object and push it to the array
+        var xdkDevice = new Device(xdkTruck.deviceid.toUpperCase(), log);
+        xdkDevice.setStoreFile(file, PASSWORD);
+        xdkDevice.setUrn(urn);
+        devices.push(xdkDevice);
+        log.verbose(IOTCS, "Device successfully registered: %s", xdkTruck.deviceid.toUpperCase());
+        nextXdk();
+      }, (err) => {
+        next(err);
+      });
+    } else {
+      next();
+    }
+  },
+  function(next) {
+    if (!useMQTT) {
+      log.info(IOTCS, "Initializing IoTCS devices");
+      log.info(IOTCS, "Using IoTCS JavaScript Libraries v" + dcl.version);
+      async.eachSeries( devices, function(d, callbackEachSeries) {
+        async.series( [
+          function(callbackSeries) {
+            // Initialize Device
+            log.info(IOTCS, "Initializing IoT device '" + d.getName() + "'");
+            d.setIotDcd(new dcl.device.DirectlyConnectedDevice(d.getIotStoreFile(), d.getIotStorePassword()));
+            callbackSeries(null);
+          },
+          function(callbackSeries) {
+            // Check if already activated. If not, activate it
+            if (!d.getIotDcd().isActivated()) {
+              log.verbose(IOTCS, "Activating IoT device '" + d.getName() + "'");
+              d.getIotDcd().activate(d.getUrn(), function (device, error) {
+                if (error) {
+                  log.error(IOTCS, "Error in activating '" + d.getName() + "' device (" + d.getUrn() + "). Error: " + error.message);
+                  callbackSeries(error);
+                }
+                d.setIotDcd(device);
+                if (!d.getIotDcd().isActivated()) {
+                  log.error(IOTCS, "Device '" + d.getName() + "' successfully activated, but not marked as Active (?). Aborting.");
+                  callbackSeries("ERROR: Successfully activated but not marked as Active");
+                }
+                callbackSeries(null);
+              });
+            } else {
+              log.verbose(IOTCS, "'" + d.getName() + "' device is already activated");
+              callbackSeries(null);
+            }
+          },
+          function(callbackSeries) {
+            // When here, the device should be activated. Get device models, one per URN registered
+            async.eachSeries(d.getUrn(), function(urn, callbackEachSeriesUrn) {
+              getModel(d.getIotDcd(), urn, (function (error, model) {
+                if (error !== null) {
+                  log.error(IOTCS, "Error in retrieving '" + urn + "' model. Error: " + error.message);
+                  callbackEachSeriesUrn(error);
+                } else {
+                  d.setIotVd(urn, model, d.getIotDcd().createVirtualDevice(d.getIotDcd().getEndpointId(), model));
+                  log.verbose(IOTCS, "'" + urn + "' intialized successfully");
+                }
+                callbackEachSeriesUrn(null);
+              }).bind(this));
+            }, function(err) {
+              if (err) {
+                callbackSeries(err);
+              } else {
+                callbackSeries(null, true);
+              }
+            });
+          }
+        ], function(err, results) {
+          callbackEachSeries(err);
+        });
+      }, function(err) {
+        if (err) {
+          next(err);
+        } else {
+          log.info(IOTCS, "IoTCS device initialized successfully");
+          next(null);
+        }
+      });
+    } else {
+      next();
+    }
+  },
+  function(next) {
+    if (!useMQTT) {
+      // If new device, get updated provisioning file contents and update DB
+      if (isNewDevice) {
+        var body = {
+          deviceid: newDeviceId,
+          data: provisioningData
+        }
+        log.verbose(DB, "Upserting device data in DB for demozone %s", DEMOZONE);
+        dbClient.post(DBURI + DBDEVICEDATA + '/' + DEMOZONE, body, (err, req, res, data) => {
+          if (err) {
+            log.error(DB,"Error from DB call: " + err.statusCode);
+            n(err);
+            return;
+          }
+          log.verbose(DB, "Device data in DB for demozone %s successfully upserted", DEMOZONE);
+          next(null);
+        });
+      } else {
+        next(null);
+      }
+    } else {
+      next();
     }
   },
   function(next) {
@@ -676,57 +818,75 @@ async.series([
     log.info(QUEUE, "Initializing QUEUE system");
     q = queue(queueConcurrency, (task, done) => {
       // Get device based on currentTruckId
-      var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
-      var vd = xdkDevice.getIotVd(urn[0]);
-      if (vd) {
-        if (_.has(task.data, 'accelerometer')) {
-          STREAM1 = task.data;
-        }
-        if (_.has(task.data, 'magneticfield')) {
-          STREAM2 = task.data;
-        }
-        if (_.has(task.data, 'light')) {
-          STREAM3 = task.data;
-        }
-        if (STREAM1 && STREAM2 && STREAM3) {
-          // Send all data in one single stream
-          var payload = {};
-          payload.accelX      = STREAM1.accelerometer.x;
-          payload.accelY      = STREAM1.accelerometer.y;
-          payload.accelZ      = STREAM1.accelerometer.z;
-          payload.gyroX       = STREAM1.gyrometer.x;
-          payload.gyroY       = STREAM1.gyrometer.y;
-          payload.gyroZ       = STREAM1.gyrometer.z;
-          payload.magX        = STREAM2.magneticfield.x;
-          payload.magY        = STREAM2.magneticfield.y;
-          payload.magZ        = STREAM2.magneticfield.z;
-          payload.magR        = STREAM2.magneticfield.r;
-          payload.light       = STREAM3.light;
-          payload.noise       = STREAM3.noise;
-          payload.pressure    = STREAM3.pressure;
-          payload.temperature = STREAM3.temperature;
-          payload.humidity    = STREAM3.humidity;
-          log.verbose(IOTCS, "Updating data: %j", payload);
-          vd.update(payload);
-          // If KAFKA is available, send event
-          if (kafkaProducer) {
-            var kafkaMessage = {
-              demozone: DEMOZONE,
-              eventname: XDK,
-              payload: payload
-            };
-            kafkaProducer.send([{ topic: kafkaSetup.eventtopic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
-              if (err) {
-                log.error(KAFKA, err);
-              } else {
-                log.verbose(KAFKA, "Message sent to topic %s, partition %s and id %d", Object.keys(data)[0], Object.keys(Object.keys(data)[0])[0], data[Object.keys(data)[0]][Object.keys(Object.keys(data)[0])[0]]);
-              }
-            });
+
+      if (_.has(task.data, 'accelerometer')) {
+        STREAM1 = task.data;
+      }
+      if (_.has(task.data, 'magneticfield')) {
+        STREAM2 = task.data;
+      }
+      if (_.has(task.data, 'light')) {
+        STREAM3 = task.data;
+      }
+
+      if (STREAM1 && STREAM2 && STREAM3) {
+        // Send all data in one single stream
+        var payload = {};
+        payload.accelX      = STREAM1.accelerometer.x;
+        payload.accelY      = STREAM1.accelerometer.y;
+        payload.accelZ      = STREAM1.accelerometer.z;
+        payload.gyroX       = STREAM1.gyrometer.x;
+        payload.gyroY       = STREAM1.gyrometer.y;
+        payload.gyroZ       = STREAM1.gyrometer.z;
+        payload.magX        = STREAM2.magneticfield.x;
+        payload.magY        = STREAM2.magneticfield.y;
+        payload.magZ        = STREAM2.magneticfield.z;
+        payload.magR        = STREAM2.magneticfield.r;
+        payload.light       = STREAM3.light;
+        payload.noise       = STREAM3.noise;
+        payload.pressure    = STREAM3.pressure;
+        payload.temperature = STREAM3.temperature;
+        payload.humidity    = STREAM3.humidity;
+        if (!useMQTT) {
+          var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
+          var vd = xdkDevice.getIotVd(urn[0]);
+          if (vd) {
+            log.verbose(IOTCS, "Updating data: %j", payload);
+            vd.update(payload);
           }
-          STREAM1 = STREAM2 = STREAM3 = _.noop();
+        } else {
+          // Send through MQTT
+          // currentTruckId contains MADX52
+          let d = _.find(xdkDevices, { name: XDK + currentTruckId });
+          if (!d) {
+            log.error(MQTT, "Current truck with id '%s' not found in MQTT settings!", currentTruckId);
+          } else {
+            let mqttTopic =   d.mqtttopic + '/' + deviceid;
+            let body = {
+              type: "data",
+              urn: d.urn,
+              payload: payload
+            }
+            log.info(MQTT, "Publishing to topic '%s': %j", mqttTopic, body);
+            mqttClient.publish(mqttTopic, JSON.stringify(body));
+          }
         }
-      } else {
-        log.error(QUEUE, "URN not registered: " + urn[0]);
+        // If KAFKA is available, send event
+        if (kafkaProducer) {
+          var kafkaMessage = {
+            demozone: DEMOZONE,
+            eventname: XDK,
+            payload: payload
+          };
+          kafkaProducer.send([{ topic: kafkaSetup.eventtopic, messages: JSON.stringify(kafkaMessage), partition: 0 }], (err, data) => {
+            if (err) {
+              log.error(KAFKA, err);
+            } else {
+              log.verbose(KAFKA, "Message sent to topic %s, partition %s and id %d", Object.keys(data)[0], Object.keys(Object.keys(data)[0])[0], data[Object.keys(data)[0]][Object.keys(Object.keys(data)[0])[0]]);
+            }
+          });
+        }
+        STREAM1 = STREAM2 = STREAM3 = _.noop();
       }
       done(); // Let queue handle next task
     });
