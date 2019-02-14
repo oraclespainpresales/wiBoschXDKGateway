@@ -296,7 +296,13 @@ function startKafka(cb) {
       currentTruckId = XDK + payload.truckid.toUpperCase();
     }
 
-    var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
+    var xdkDevice = _.noop();
+    if (useMQTT) {
+      xdkDevice = _.find(xdkDevices, { name: XDK + currentTruckId });
+;
+    } else {
+      xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
+    }
     if (!xdkDevice) {
       log.verbose(IOTCS, "Ignoring '%s' command as no device found for requested truck id '%s'", payload.action, payload.truckid);
       return;
