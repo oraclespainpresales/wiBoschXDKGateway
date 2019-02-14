@@ -87,6 +87,7 @@ if (useMQTT) {
   var mqtt       = require('mqtt')
     , mqttClient = _.noop()
     , mqttTopic  = _.noop()
+    , xdkDevices = [];
     , MQTTBROKER
     , MQTTUSERNAME
     , MQTTPASSWORD
@@ -549,7 +550,6 @@ async.series([
           next(err);
           return;
         }
-        var xdkDevices = [];
         _.forEach(data.items, (d) => {
           if (d.devicename.startsWith('XDK')) {
             xdkDevices.push({
