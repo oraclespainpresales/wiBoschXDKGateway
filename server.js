@@ -71,12 +71,12 @@ const
     , DEVICEFILE          = 'device.conf'
     , PASSWORD            = 'Welcome1'
     , DEMOZONEFILE        = '/demozone.dat'
-    , CONSUMERGROUPFILEID = '/tmp/kafka-consumergroup.id'
+    , CONSUMERGROUPFILEID = '/home/pi/temp/kafka-consumergroup.id'
     , DEFAULTDEMOZONE     = 'MADRID'
 ;
 
 // MQTT related stuff
-const ENABLEMQTTFILE = '/tmp/USEMQTT'
+const ENABLEMQTTFILE = '/home/pi/temp/USEMQTT'
 ;
 
 var useMQTT = fs.existsSync(ENABLEMQTTFILE);
@@ -95,7 +95,6 @@ if (useMQTT) {
     , MQTTCONNECTTIMEOUT
   ;
 }
-
 // MQTT stuff end
 
 // Initialize input arguments
