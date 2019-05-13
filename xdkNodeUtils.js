@@ -366,7 +366,10 @@ var peripheralDisconnected = () => {
 noble.on('discover', function(peripheral) {
   var id = peripheral.advertisement.serviceUuids;
 
-  if (peripheral.id == XDKID) {
+//  var found = (peripheral.id == XDKID);
+  var found = (peripheral.advertisement.localName == "XDK_Virtual_Sensor");
+
+  if (found) {
     log.info(BLE, "XDK found (%s)", peripheral.advertisement.localName);
     noble.stopScanning();
     XDK = peripheral;
