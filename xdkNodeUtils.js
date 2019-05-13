@@ -367,7 +367,7 @@ noble.on('discover', function(peripheral) {
   var id = peripheral.advertisement.serviceUuids;
 
 //  var found = (peripheral.id == XDKID);
-  var found = (peripheral.advertisement.localName == "XDK_Virtual_Sensor");
+  var found = (peripheral.advertisement.localName === "XDK_Virtual_Sensor");
 
   if (found) {
     log.info(BLE, "XDK found (%s)", peripheral.advertisement.localName);
