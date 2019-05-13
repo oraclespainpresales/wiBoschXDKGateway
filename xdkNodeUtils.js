@@ -380,7 +380,7 @@ noble.on('discover', function(peripheral) {
 
   console.log("Result: " + Buffer.compare(a, b));
 
-  if (found === true) {
+  if (Buffer.compare(a, b) == 0) {
     log.info(BLE, "XDK found (%s)", peripheral.advertisement.localName);
     noble.stopScanning();
     XDK = peripheral;
