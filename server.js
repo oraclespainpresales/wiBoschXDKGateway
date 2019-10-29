@@ -836,21 +836,21 @@ async.series([
       if (STREAM1 && STREAM2 && STREAM3) {
         // Send all data in one single stream
         var payload = {};
-        payload.accelX      = STREAM1.accelerometer.x;
-        payload.accelY      = STREAM1.accelerometer.y;
-        payload.accelZ      = STREAM1.accelerometer.z;
-        payload.gyroX       = STREAM1.gyrometer.x;
-        payload.gyroY       = STREAM1.gyrometer.y;
-        payload.gyroZ       = STREAM1.gyrometer.z;
-        payload.magX        = STREAM2.magneticfield.x;
-        payload.magY        = STREAM2.magneticfield.y;
-        payload.magZ        = STREAM2.magneticfield.z;
-        payload.magR        = STREAM2.magneticfield.r;
-        payload.light       = STREAM3.light;
-        payload.noise       = STREAM3.noise;
-        payload.pressure    = STREAM3.pressure;
-        payload.temperature = STREAM3.temperature;
-        payload.humidity    = STREAM3.humidity;
+        payload.accelX      = Number(STREAM1.accelerometer.x);
+        payload.accelY      = Number(STREAM1.accelerometer.y);
+        payload.accelZ      = Number(STREAM1.accelerometer.z);
+        payload.gyroX       = Number(STREAM1.gyrometer.x);
+        payload.gyroY       = Number(STREAM1.gyrometer.y);
+        payload.gyroZ       = Number(STREAM1.gyrometer.z);
+        payload.magX        = Number(STREAM2.magneticfield.x);
+        payload.magY        = Number(STREAM2.magneticfield.y);
+        payload.magZ        = Number(STREAM2.magneticfield.z);
+        payload.magR        = Number(STREAM2.magneticfield.r);
+        payload.light       = Number(STREAM3.light);
+        payload.noise       = Number(STREAM3.noise);
+        payload.pressure    = Number(STREAM3.pressure);
+        payload.temperature = Number(STREAM3.temperature);
+        payload.humidity    = Number(STREAM3.humidity);
         if (!useMQTT) {
           var xdkDevice = _.find(devices, (d) => { return d.getName() === currentTruckId });
           var vd = xdkDevice.getIotVd(urn[0]);
